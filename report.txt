@@ -48,8 +48,95 @@ Directive Reference: command.md
     5. Auditable Workflow Exception Handling (unassigned fallbacks, RFI loops, spend rejections).
 
 [2026-10-21 20:25] Produced Stage 0 Baseline Deliverables.
-  - Creating ARCHITECTURE.md detailing technology choices, layering, security, and schema design.
-  - Creating PROJECT_PROGRESS.md establishing the baseline and tracking verified milestones.
-  - Creating AGENTS.md documenting persistent repository-specific engineering rules.
-  - Creating README.md providing professional product setup and overview.
-  - Maintaining report.txt in parallel as requested by the user.
+  - Created ARCHITECTURE.md detailing technology choices, layering, security, and schema design.
+  - Created PROJECT_PROGRESS.md establishing the baseline and tracking verified milestones.
+  - Created AGENTS.md documenting persistent repository-specific engineering rules.
+  - Created README.md providing professional product setup and overview.
+  - Created .gitignore tailored for Java/Maven/Spring Boot and React/Node workspaces.
+  - Initialized Git repository on 'main' branch and created initial commit (commit e255f83).
+  - Maintained report.txt in parallel as requested by the user.
+
+--------------------------------------------------------------------------------
+2. STAGE 0 DIRECTIVE DELIVERABLES (SECTION 17 REQUIREMENTS)
+--------------------------------------------------------------------------------
+
+2.1 CONCISE ARCHITECTURE ASSESSMENT
+-----------------------------------
+- Repository State: Clean baseline repository. Prior to execution, only the directive
+  'command.md' existed in D:\ProcessHub.
+- System Capabilities:
+  * Runtime environment possesses verified Node.js v22.19, npm 10.9.3, JDK 25.0.4 LTS,
+    and Git 2.53.
+  * Backend architecture will be constructed in Java / Spring Boot 3 with layered separation:
+    Presentation/REST -> Service/Domain Logic -> Workflow/Routing Engine -> Persistence/JPA.
+  * Security model uses Spring Security with JWT tokens and granular RBAC (Reporter,
+    Supervisor, Technician, Finance Approver, Administrator).
+  * Frontend architecture will leverage a responsive React application adhering to rich visual
+    standards with dedicated, role-specific queues.
+
+2.2 LIST OF WORKING AND INCOMPLETE FEATURES
+--------------------------------------------
+- Working / Verified:
+  [x] Repository initialized with Git version control and proper .gitignore.
+  [x] Host toolchain (Java 25 LTS, Node 22, npm 10) validated for builds.
+  [x] Stage 0 Architecture specification (ARCHITECTURE.md).
+  [x] Engineering and development guidelines (AGENTS.md).
+  [x] Project roadmap and verification matrix (PROJECT_PROGRESS.md).
+  [x] Product overview and setup documentation (README.md).
+  [x] Audit history logging (report.txt).
+
+- Incomplete / Pending Implementation:
+  [ ] Stage 1: Foundation, JPA entity models, database migrations, Spring Security & JWT.
+  [ ] Stage 2: Multi-tenancy, department hierarchy, user memberships, category configurations.
+  [ ] Stage 3: Problem reporting engine, PH-XXXX reference generator, reporter portal.
+  [ ] Stage 4: Context-aware routing service, supervisor review queue, rejection & RFI workflows.
+  [ ] Stage 5: Technician workboard, diagnosis logs, expenditure approval queue, verification.
+  [ ] Stage 6: In-app notifications, recurring-issue intelligence, SLA countdowns, operational metrics.
+  [ ] Stage 7: End-to-end automated workflow validation across all 10 mandatory test scenarios.
+  [ ] Stage 8: Docker containerization, CI/CD pipeline integration, production hardening.
+
+2.3 RESEARCH-INFORMED PRODUCT IMPROVEMENT PLAN
+----------------------------------------------
+Based on competitive analysis of Jira Service Management, Camunda, GLPI, and facilities maintenance systems:
+1. Dynamic Routing without Scheme Bloat:
+   Overcome JSM's limitation where workflows bind to Issue Types rather than Request Types.
+   ProcessHub implements a data-driven routing engine matching category, location, asset,
+   and severity to designated supervisors and teams without requiring database schema alterations.
+2. Unified State & Single Source of Truth:
+   Overcome Camunda's "split-brain" vulnerability by anchoring the workflow state machine
+   directly inside the core relational database transactions alongside the issue entity.
+3. Explainable Progress for Users:
+   Overcome legacy ticket opacity. Every issue computes an ExplainableProgress record detailing:
+   Current Stage, Blocking Dependency (e.g. Finance Approval), Responsible Team, and Required Next Action.
+4. Recurring-Issue Detection:
+   Overcome generic CMMS isolation by correlating issues across Asset ID and Location Room/Building
+   within a 90-day window, delivering actionable historical repair cards to technicians.
+5. Strict Verification & Closure Gate:
+   Prevent unauthorized self-verification by technicians; enforce independent verification
+   by supervisor or reporter with captured completion notes and evidence.
+
+2.4 HIGHEST-PRIORITY IMPLEMENTATION GAPS
+-----------------------------------------
+1. Absence of executable backend foundation (Spring Boot skeleton with Maven build file and JPA entities).
+2. Absence of security layer (JWT generation, validation, and password hashing service).
+3. Absence of initial database schema migrations for organizations, users, roles, and departments.
+4. Absence of issue reporting DTOs and lifecycle status transitions.
+
+2.5 SMALL, TESTABLE FIRST TASK (STAGE 1 SCOPE)
+----------------------------------------------
+The recommended first task is to execute Stage 1:
+- Step 1: Initialize the backend service skeleton with Maven build configuration (`pom.xml` / `mvnw`),
+  configured for Java 25 / Spring Boot 3.
+- Step 2: Implement core IAM entity models (`Organization`, `Department`, `User`, `Role`, `Membership`).
+- Step 3: Implement Spring Security configuration with BCrypt password hashing and JWT token provider.
+- Step 4: Implement AuthenticationController (`/api/v1/auth/register`, `/api/v1/auth/login`, `/api/v1/auth/me`).
+- Step 5: Write automated unit and integration tests verifying user registration, authentication,
+  and JWT token issuance/validation.
+- Step 6: Verify all tests execute and pass, then update `PROJECT_PROGRESS.md` and `report.txt`.
+
+--------------------------------------------------------------------------------
+3. RECOMMENDED NEXT STEP
+--------------------------------------------------------------------------------
+Proceed to Stage 1: Initialize the Spring Boot 3 backend application, establish the
+JPA persistence layer and security foundation, and run the automated test suite.
+================================================================================
