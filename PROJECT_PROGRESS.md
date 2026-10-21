@@ -3,7 +3,7 @@
 ## 1. Project Health & Baseline Status
 - **Current Stage**: Stage 2 — Organization Membership, Departments, Category Configuration, and Access Isolation Complete.
 - **Verification Date**: 2026-10-21
-- **Overall Status**: Multitenancy, departments, role memberships, and category configuration verified. 32/32 automated tests passing. Ready for Stage 3.
+- **Overall Status**: Multitenancy, departments, role memberships, and category configuration verified. 33/33 automated tests passing. Ready for Stage 3.
 
 ---
 
@@ -50,7 +50,7 @@
 ## 4. Stage 2 Verification & Test Execution Log
 - **Execution Command**: `.\mvnw.cmd clean test`
 - **Build Outcome**: `BUILD SUCCESS` (Total time: 21.218 s)
-- **Total Tests Executed**: 32
+- **Total Tests Executed**: 33
 - **Failures**: 0, **Errors**: 0, **Skipped**: 0
 
 ### Breakdown of Test Results
@@ -77,11 +77,12 @@
    - Category creation with subtypes: PASSED (201 Created for `WATER_LEAKAGE` under Facilities)
    - Department-based category filtering: PASSED (200 OK filtering for IT categories)
    - Duplicate category code rejection: PASSED (409 Conflict)
-8. `MultiTenantAccessIsolationTest` (4 tests):
+8. `MultiTenantAccessIsolationTest` (5 tests):
    - Intra-organization department access: PASSED (200 OK for User Alpha in Campus Alpha)
    - Cross-organization department access prevention: PASSED (403 Forbidden when User Alpha accesses Campus Beta)
    - Cross-organization category access prevention: PASSED (403 Forbidden when User Alpha accesses Campus Beta categories)
    - Cross-organization mutation tampering prevention: PASSED (403 Forbidden when User Alpha attempts to create department in Campus Beta)
+   - Symmetrical intra-organization access: PASSED (200 OK for User Beta in Campus Beta)
 
 ---
 
