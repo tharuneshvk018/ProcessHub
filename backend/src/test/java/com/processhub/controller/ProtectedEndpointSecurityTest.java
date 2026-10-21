@@ -81,8 +81,6 @@ class ProtectedEndpointSecurityTest {
     @Test
     @DisplayName("SAFEGUARD 2: Public registration must never grant admin privileges; reporter denied admin endpoint (403 Forbidden)")
     void testReporterDeniedAdminEndpoint() throws Exception {
-        RegisterRequest request = new RegisterRequest("attacker@processhub.com", "Password123!", "Malicious Actor", null);
-
         // Attempting to send JSON with unexpected role field: 'role': 'ROLE_ADMIN'
         String maliciousJson = "{\"email\":\"attacker@processhub.com\",\"password\":\"Password123!\",\"fullName\":\"Malicious Actor\",\"role\":\"ROLE_ADMIN\"}";
 

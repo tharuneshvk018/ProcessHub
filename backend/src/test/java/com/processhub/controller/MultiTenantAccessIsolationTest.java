@@ -156,4 +156,14 @@ class MultiTenantAccessIsolationTest {
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    @DisplayName("User Beta can view departments belonging to their own organization (Campus Beta)")
+    void testUserBetaCanAccessOwnOrganizationDepartments() throws Exception {
+        mockMvc.perform(get("/api/v1/organizations/" + orgBeta.getId() + "/departments")
+                        .header("Authorization", "Bearer " + tokenBeta))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].name").value("Beta Confidential Dept"));
+    }
 }

@@ -4,7 +4,6 @@ import com.processhub.domain.entity.Department;
 import com.processhub.domain.entity.Organization;
 import com.processhub.domain.entity.OrganizationMembership;
 import com.processhub.domain.entity.User;
-import com.processhub.domain.enums.Role;
 import com.processhub.domain.repository.DepartmentRepository;
 import com.processhub.domain.repository.OrganizationMembershipRepository;
 import com.processhub.domain.repository.OrganizationRepository;
