@@ -1,9 +1,9 @@
 # PROJECT_PROGRESS.md — Verified Implementation Progress & Feature Matrix
 
 ## 1. Project Health & Baseline Status
-- **Current Stage**: Stage 1 — Foundation, Database Configuration, and Authentication Complete.
+- **Current Stage**: Stage 2 — Organization Membership, Departments, Category Configuration, and Access Isolation Complete.
 - **Verification Date**: 2026-10-21
-- **Overall Status**: Foundation established, verified, and secured. 16/16 automated tests passing. Ready for Stage 2.
+- **Overall Status**: Multitenancy, departments, role memberships, and category configuration verified. 32/32 automated tests passing. Ready for Stage 3.
 
 ---
 
@@ -17,8 +17,9 @@
 | **Database Schema & Migration Foundation** | Stage 1 | **COMPLETED** | 100% verified via Flyway | `V1__create_users_table.sql` validated on bootstrap |
 | **Unified Authentication & JWT Security** | Stage 1 | **COMPLETED** | 16 automated tests | BCrypt (strength 12), JJWT 0.12.6, method guards |
 | **Privilege Escalation Prevention (Safeguard 2)** | Stage 1 | **COMPLETED** | Integration tested | Public registration strictly assigns `ROLE_REPORTER` |
-| **Multi-Tenancy, Roles & Organization Memberships** | Stage 2 | PENDING | Pending Stage 2 | RBAC: Reporter, Supervisor, Tech, Finance, Admin |
-| **Department & Category Configuration** | Stage 2 | PENDING | Pending Stage 2 | Facilities, Plumbing, Electrical, IT, Lab, Admin |
+| **Multi-Tenancy, Roles & Organization Memberships** | Stage 2 | **COMPLETED** | 8 automated tests | Multi-tenant schema (`V2`), role memberships, anti-tampering |
+| **Department & Category Configuration** | Stage 2 | **COMPLETED** | 8 automated tests | Facilities, Plumbing, Electrical, IT; category subtypes |
+| **Cross-Tenant Data Isolation** | Stage 2 | **COMPLETED** | Integration tested | Cross-organization access attempts return 403 Forbidden |
 | **Problem Reporting & Category-Specific Forms** | Stage 3 | PENDING | Pending Stage 3 | PH-XXXX reference generation, validation, uploads |
 | **Reporter Dashboard & My Reports Portal** | Stage 3 | PENDING | Pending Stage 3 | Real-time tracking and explainable progress view |
 | **Context-Aware Dynamic Routing Engine** | Stage 4 | PENDING | Pending Stage 4 | Multi-factor routing, supervisor queue, exceptions |
@@ -46,40 +47,48 @@
 
 ---
 
-## 4. Stage 1 Verification & Test Execution Log
+## 4. Stage 2 Verification & Test Execution Log
 - **Execution Command**: `.\mvnw.cmd clean test`
-- **Build Outcome**: `BUILD SUCCESS` (Total time: 12.022 s)
-- **Total Tests Executed**: 16
+- **Build Outcome**: `BUILD SUCCESS` (Total time: 21.218 s)
+- **Total Tests Executed**: 32
 - **Failures**: 0, **Errors**: 0, **Skipped**: 0
 
 ### Breakdown of Test Results
 1. `ProcessHubApplicationTests`:
-   - `contextLoads()`: PASSED (Flyway migration `V1__create_users_table.sql` successfully executed and verified against schema)
-2. `JwtTokenProviderTest`:
-   - `testGenerateAndValidateToken()`: PASSED (HS256 signature, claims extraction: id, email, role, department)
-   - `testRejectInvalidToken()`: PASSED (Malformed, empty, or unverified tokens rejected)
-   - `testRejectExpiredToken()`: PASSED (Expired tokens cleanly detected and rejected)
-3. `AuthControllerIntegrationTest`:
-   - `testRegisterSuccess()`: PASSED (201 Created, returns Bearer token and user summary with `ROLE_REPORTER`)
-   - `testRegisterDuplicateEmail()`: PASSED (409 Conflict with informative error response)
-   - `testRegisterValidationFailure()`: PASSED (400 Bad Request with field-level constraint details)
-   - `testLoginSuccess()`: PASSED (200 OK with valid credentials, returns authenticated JWT)
-   - `testLoginWrongPassword()`: PASSED (401 Unauthorized with standard structured JSON error)
-   - `testGetCurrentUserWithToken()`: PASSED (200 OK on `/api/v1/auth/me` with valid Bearer token)
-   - `testGetCurrentUserUnauthorized()`: PASSED (401 Unauthorized on `/api/v1/auth/me` without token)
-4. `ProtectedEndpointSecurityTest`:
-   - `testUnauthenticatedAccessDenied()`: PASSED (401 on protected endpoints when unauthenticated)
-   - `testReporterAccessToUserEndpoint()`: PASSED (200 OK for reporter on general protected endpoints)
-   - `testReporterDeniedAdminEndpoint()`: PASSED (403 Forbidden when reporter attempts access to `/admin`; confirms Safeguard 2)
-   - `testAdminAccessAllowed()`: PASSED (200 OK for provisioned admin on `@PreAuthorize("hasRole('ADMIN')")`)
-   - `testSupervisorRoleBoundaries()`: PASSED (200 OK for supervisor on `/supervisor`, 403 Forbidden on `/admin`)
+   - `contextLoads()`: PASSED (Flyway migrations `V1` and `V2` executed and schema validated against JPA entities)
+2. `JwtTokenProviderTest` (3 tests):
+   - Token creation, claim parsing, expiration detection, and signature validation all PASSED.
+3. `AuthControllerIntegrationTest` (7 tests):
+   - User registration, duplicate email rejection (409), input validation (400), login, password verification, `/me` profile retrieval (200), and unauthenticated access rejection (401) all PASSED.
+4. `ProtectedEndpointSecurityTest` (5 tests):
+   - Unauthenticated 401 rejection, reporter user access, privilege escalation prevention (403 on `/admin`), admin access (200), and supervisor boundary all PASSED.
+5. `OrganizationManagementIntegrationTest` (5 tests):
+   - Admin organization creation: PASSED (201 Created with unique uppercase code)
+   - Non-admin org creation rejection: PASSED (403 Forbidden)
+   - Duplicate organization code rejection: PASSED (409 Conflict)
+   - Department provisioning (Facilities, Electrical, Plumbing): PASSED (201 Created)
+   - Duplicate department code in same org rejection: PASSED (409 Conflict)
+6. `MembershipManagementIntegrationTest` (4 tests):
+   - Supervisor membership assignment: PASSED (201 Created for Facilities department)
+   - Technician membership assignment: PASSED (201 Created for Plumbing department)
+   - Non-admin membership assignment rejection: PASSED (403 Forbidden)
+   - Cross-organization active user memberships retrieval: PASSED (200 OK)
+7. `CategoryConfigurationIntegrationTest` (3 tests):
+   - Category creation with subtypes: PASSED (201 Created for `WATER_LEAKAGE` under Facilities)
+   - Department-based category filtering: PASSED (200 OK filtering for IT categories)
+   - Duplicate category code rejection: PASSED (409 Conflict)
+8. `MultiTenantAccessIsolationTest` (4 tests):
+   - Intra-organization department access: PASSED (200 OK for User Alpha in Campus Alpha)
+   - Cross-organization department access prevention: PASSED (403 Forbidden when User Alpha accesses Campus Beta)
+   - Cross-organization category access prevention: PASSED (403 Forbidden when User Alpha accesses Campus Beta categories)
+   - Cross-organization mutation tampering prevention: PASSED (403 Forbidden when User Alpha attempts to create department in Campus Beta)
 
 ---
 
 ## 5. Staged Roadmap & Milestones
 - [x] **Stage 0**: Repository audit, environment baseline, competitive analysis, and architecture specifications.
 - [x] **Stage 1**: Foundation setup — backend application skeleton, JPA persistence, Flyway migrations, Spring Security with JWT authentication, user registration, privilege escalation prevention, and automated tests.
-- [ ] **Stage 2**: Organization management — multi-tenancy, department hierarchy, role assignments, category and routing configuration.
+- [x] **Stage 2**: Organization management — multi-tenancy, department hierarchy, role assignments, category and routing configuration, and cross-tenant access isolation.
 - [ ] **Stage 3**: Problem reporting engine — ticket reference generation (`PH-1001`), field validation, asset linkage, reporter dashboard.
 - [ ] **Stage 4**: Routing and review engine — supervisor queue, triage logic, approval/rejection reasons, request-for-information (RFI) dialogue.
 - [ ] **Stage 5**: Work coordination and verification — technician work orders, spend thresholds and finance approval, evidence upload, independent verification.
