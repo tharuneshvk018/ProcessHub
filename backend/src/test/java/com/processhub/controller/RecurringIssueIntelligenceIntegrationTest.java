@@ -85,7 +85,6 @@ class RecurringIssueIntelligenceIntegrationTest {
     private User reporterUser;
     private String reporterToken;
     private User outsideUser;
-    private String outsideToken;
 
     @BeforeEach
     void setUp() {
@@ -113,7 +112,6 @@ class RecurringIssueIntelligenceIntegrationTest {
                 "Outside Tenant", "+15552222", Role.ROLE_REPORTER, "External"));
         membershipRepository.save(new OrganizationMembership(
                 UUID.randomUUID(), organizationB, outsideUser, null, Role.ROLE_REPORTER));
-        outsideToken = jwtTokenProvider.generateToken(outsideUser);
     }
 
     @AfterEach

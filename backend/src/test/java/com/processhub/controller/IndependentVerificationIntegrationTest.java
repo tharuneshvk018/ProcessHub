@@ -6,7 +6,6 @@ import com.processhub.domain.enums.IssueStatus;
 import com.processhub.domain.enums.Priority;
 import com.processhub.domain.enums.Role;
 import com.processhub.domain.repository.*;
-import com.processhub.dto.SubmitResolutionRequest;
 import com.processhub.dto.VerifyResolutionRequest;
 import com.processhub.security.JwtTokenProvider;
 import org.junit.jupiter.api.AfterEach;

@@ -82,7 +82,6 @@ class TechnicianWorkboardIntegrationTest {
     private User technicianBob;
     private String technicianToken;
     private User reporterAlice;
-    private String reporterToken;
     private User externalUser;
     private String externalToken;
 
@@ -110,7 +109,6 @@ class TechnicianWorkboardIntegrationTest {
                 "Alice Reporter", "555-2222", Role.ROLE_REPORTER, "Operations"));
         membershipRepository.save(new OrganizationMembership(
                 UUID.randomUUID(), organization, reporterAlice, facilitiesDept, Role.ROLE_REPORTER));
-        reporterToken = jwtTokenProvider.generateToken(reporterAlice);
 
         externalUser = userRepository.save(new User(
                 UUID.randomUUID(), "external@processhub.com", passwordEncoder.encode("Pass123!"),

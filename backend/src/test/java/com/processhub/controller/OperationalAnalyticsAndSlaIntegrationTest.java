@@ -86,7 +86,6 @@ class OperationalAnalyticsAndSlaIntegrationTest {
     private User supervisorUser;
     private String supervisorToken;
     private User technicianUser;
-    private String technicianToken;
     private User outsideUser;
     private String outsideToken;
 
@@ -125,7 +124,6 @@ class OperationalAnalyticsAndSlaIntegrationTest {
                 "Tom Technician", "+15559902", Role.ROLE_TECHNICIAN, "IT Infrastructure"));
         membershipRepository.save(new OrganizationMembership(
                 UUID.randomUUID(), organizationA, technicianUser, itDept, Role.ROLE_TECHNICIAN));
-        technicianToken = jwtTokenProvider.generateToken(technicianUser);
 
         // Outside user in Org B
         outsideUser = userRepository.save(new User(

@@ -2,7 +2,6 @@ package com.processhub.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.processhub.domain.entity.*;
-import com.processhub.domain.enums.ExpenditureStatus;
 import com.processhub.domain.enums.IssueStatus;
 import com.processhub.domain.enums.Priority;
 import com.processhub.domain.enums.Role;
