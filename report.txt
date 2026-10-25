@@ -193,8 +193,241 @@ The recommended first task is to execute Stage 1:
   - Status: Stage 2 COMPLETE.
 
 --------------------------------------------------------------------------------
-5. RECOMMENDED NEXT STEP
+5. STAGE 3 IMPLEMENTATION & VERIFICATION LOG
 --------------------------------------------------------------------------------
-Proceed to Stage 3: Implement problem reporting engine, reference generation (PH-XXXX),
-attachment validation, and reporter dashboard endpoints.
+[2026-10-22 17:45] Implemented Stage 3 Problem Reporting Schema & Domain Model.
+  - Implemented Flyway migration 'V3__create_issues_attachments_timeline.sql':
+    tables for issues, issue_attachments, issue_timeline_events, and database sequence
+    'issue_ref_seq' starting at 1001.
+  - Implemented JPA Entities: Issue, IssueAttachment, IssueTimelineEvent.
+  - Implemented Repositories: IssueRepository, IssueAttachmentRepository, IssueTimelineEventRepository.
+  - Implemented Enums: IssueStatus (SUBMITTED, UNDER_REVIEW, MORE_INFO_REQUESTED, ASSIGNED,
+    IN_PROGRESS, AWAITING_FINANCE, RESOLVED_PENDING_VERIFICATION, CLOSED, REJECTED, REOPENED),
+    Priority (LOW, MEDIUM, HIGH, CRITICAL), TimelineAction (ISSUE_SUBMITTED, ATTACHMENT_ADDED, etc.).
+  - Implemented DTOs: CreateIssueRequest, IssueResponse, ExplainableProgressResponse,
+    AttachmentResponse, AttachmentDownloadResponse, TimelineEventResponse, ReporterDashboardResponse.
+
+[2026-10-22 17:49] Implemented Business Services & API Controllers.
+  - IssueService:
+    * Atomic reference code generation formatted as 'PH-XXXX' from database sequence.
+    * Category-specific validations, including mandatory asset ID checking when configured.
+    * Rapid repeated click / duplicate submission prevention within a 30-second window (409 Conflict).
+    * Dynamic Explainable Progress DTO population (stage, responsible role, blocking reason, next action).
+    * Immutable audit timeline event recording for submissions and updates.
+    * Reporter dashboard summary metric aggregation (totalReported, active, resolved, actionRequired).
+  - AttachmentService:
+    * Strict MIME-type validation (JPEG, PNG, WEBP, GIF, PDF, DOCX, TXT).
+    * Prohibited extension blocking (.exe, .sh, .bat, .cmd, .js, .msi, etc.).
+    * 10MB maximum file size enforcement and empty file rejection.
+    * Filename sanitization protecting against directory traversal.
+    * Authenticated streaming retrieval endpoint with Content-Disposition and MIME headers.
+  - Controllers:
+    * IssueController: POST /api/v1/organizations/{orgId}/issues, GET /my-reports,
+      GET /reporter/dashboard, GET /{issueId}, GET /ref/{referenceCode},
+      POST /{issueId}/attachments, GET /{issueId}/attachments/{attachmentId}.
+    * DirectIssueController: GET /api/v1/issues/ref/{referenceCode} enforcing tenant isolation.
+    * GlobalExceptionHandler: Added explicit handlers for IllegalArgumentException and
+      MaxUploadSizeExceededException returning 400 Bad Request.
+
+[2026-10-22 17:53] Executed Automated Test Suite (Stage 1 + Stage 2 + Stage 3).
+  - Command: .\mvnw.cmd test
+  - Results: 63 tests executed, 0 failures, 0 errors, 0 skipped. (30 new tests added in Stage 3)
+  - Verified:
+    * Issue creation happy path generating PH-XXXX references and explainable progress (201 Created).
+    * Sequential unique reference generation across distinct requests.
+    * Category asset requirement enforcement (400 Bad Request if missing, 201 Created when present).
+    * Comprehensive input validation (title, description, location, department).
+    * Duplicate submission rejection (409 Conflict).
+    * My Reports portal query isolation per authenticated reporter.
+    * Reporter dashboard metric calculations and unauthenticated protection (401 Unauthorized).
+    * Image and document upload, authenticated streaming download, and malicious executable rejection.
+    * Strict cross-tenant data isolation on issue creation, listing, inspection, attachment uploads,
+      and attachment downloads (403 Forbidden).
+  - Status: Stage 3 COMPLETE.
+
+--------------------------------------------------------------------------------
+6. STAGE 4 IMPLEMENTATION & VERIFICATION LOG
+--------------------------------------------------------------------------------
+[2026-10-22 18:18] Implemented Context-Aware Routing & Supervisor Workflow Services.
+  - WorkflowRoutingService:
+    * Evaluates department supervisor registry to dynamically determine queue routing.
+    * Multi-factor context evaluation: Critical priority safety issues trigger emergency
+      supervisor prompts and expedited next action indicators.
+    * Unstaffed Department Exception Handling: Issues in departments without registered
+      supervisors route cleanly to 'UNASSIGNED_TRIAGE' state with responsible role 'ROLE_ADMIN'
+      and immutable 'ROUTING_EXCEPTION' audit timeline records.
+  - SupervisorWorkflowService:
+    * Supervisor Queue: Filters issues strictly by the departments supervised by the authenticated actor.
+    * Supervisor Metrics: Computes pending reviews, unassigned reports, RFI counts, and critical safety issues.
+    * Eligible Department Technicians: Queries active technicians and current active workload.
+    * Review Initiation: Moves status to UNDER_REVIEW, logs 'REVIEW_STARTED' timeline event.
+    * Issue Approval & Assignment: Supports direct technician assignment or department approval,
+      transitioning status to ASSIGNED and logging 'TECHNICIAN_ASSIGNED' in the timeline.
+    * Mandatory Rejection Reasons: Rejects reports with mandatory reason (min 10 chars), updates
+      blocking reason, sets closedAt, and records 'ISSUE_REJECTED' audit entry.
+    * Bidirectional RFI Dialogue: Supervisors request clarification (MORE_INFO_REQUESTED), blocking
+      resolution until original reporter responds (MORE_INFO_PROVIDED), unblocking back to UNDER_REVIEW.
+  - Controllers:
+    * SupervisorController: GET /supervisor/queue, GET /supervisor/metrics,
+      GET /supervisor/departments/{departmentId}/technicians.
+    * IssueWorkflowController: POST /review, POST /approve, POST /reject,
+      POST /request-info, POST /provide-info, POST /assign, POST /route.
+
+[2026-10-22 18:23] Executed Automated Test Suite (Stage 1 + Stage 2 + Stage 3 + Stage 4).
+  - Command: .\mvnw.cmd test
+  - Results: 76 tests executed, 0 failures, 0 errors, 0 skipped. (13 new tests added in Stage 4)
+  - Verified:
+    * Context-aware multi-factor routing to active department supervisor queue.
+    * Critical safety priority prompt routing.
+    * Unassigned triage exception handling when no department supervisor is configured.
+    * Supervisor queue department data isolation (supervisors only see their departments).
+    * Non-supervisor access prevention on supervisor queue (403 Forbidden).
+    * Supervisor metrics calculation accuracy.
+    * Supervisor review initiation and audit recording.
+    * Mandatory rejection reason validation and premature closure prevention.
+    * Bidirectional RFI dialogue and intruder response prevention (403 Forbidden).
+    * Department technician querying and validated technician assignment.
+  - Status: Stage 4 COMPLETE.
+
+[2026-10-22 18:55] Implemented & Verified Stage 5 Components.
+  - Created Flyway migration V4__create_expenditures_and_work_orders.sql:
+    * Created expenditure_requests table with FKs to issues and users, status, amount, and notes.
+    * Added resolution fields to issues: work_summary, root_cause, labor_hours, parts_used,
+      resolution_evidence_url, resolved_at, verified_by_id, verified_at, verification_notes.
+  - Implemented Domain Entities, Enums & Repositories:
+    * Created ExpenditureStatus (PENDING, APPROVED, REJECTED).
+    * Added TimelineAction enum values: PROGRESS_UPDATED, EXPENDITURE_REQUESTED,
+      EXPENDITURE_APPROVED, EXPENDITURE_REJECTED, SUBMITTED_FOR_VERIFICATION,
+      VERIFICATION_PASSED, VERIFICATION_FAILED.
+    * Created ExpenditureRequest entity with JPA mappings and auditing timestamps.
+    * Created ExpenditureRequestRepository for issue and organization queries.
+    * Extended Issue entity and IssueResponse DTO with Stage 5 resolution and expenditure fields.
+    * Created DTOs: CreateExpenditureRequest, DecideExpenditureRequest, ExpenditureResponse,
+      UpdateProgressRequest, SubmitResolutionRequest, VerifyResolutionRequest,
+      TechnicianMetricsResponse, FinanceMetricsResponse.
+  - Implemented Workflow Services:
+    * TechnicianWorkflowService: technician workboard filtering, priority sorting,
+      start work transition (ASSIGNED -> IN_PROGRESS), progress tracking, and resolution
+      submission (transition to RESOLVED_PENDING_VERIFICATION; prevents premature closure
+      if pending expenditures exist).
+    * FinanceWorkflowService: $100.00 spend threshold evaluation; amounts <= $100 auto-approved
+      instantly without blocking; amounts > $100 create pending expenditure request and
+      transition issue to AWAITING_FINANCE with explainable blocker; finance queue retrieval
+      and metrics; approval unblocks work back to IN_PROGRESS; rejection routes back to
+      UNDER_REVIEW supervisor queue.
+    * VerificationWorkflowService: enforce separation of duties — assigned technician cannot
+      verify own work (403 Forbidden); authorized supervisor or reporter verification closes
+      issue permanently to CLOSED; rejection reopens issue to IN_PROGRESS with rework notes.
+  - Controllers:
+    * TechnicianController: GET /technician/workboard, GET /technician/metrics.
+    * FinanceController: GET /finance/queue, GET /finance/metrics.
+    * IssueWorkflowController: POST /start, POST /progress, POST /resolve, POST /expenditures,
+      GET /expenditures, POST /expenditures/{id}/decision, POST /verify.
+  - Full Test Execution Results:
+    * Command: .\mvnw.cmd test
+    * Total Tests Executed: 96
+    * Failures: 0, Errors: 0, Skipped: 0 (BUILD SUCCESS in 01:15 min).
+    * 20 new tests added across TechnicianWorkboardIntegrationTest,
+      ConditionalFinanceApprovalIntegrationTest, IndependentVerificationIntegrationTest.
+  - Status: Stage 5 COMPLETE.
+
+STAGE 6 EXECUTION LOG (Intelligence, Notifications, and Analytics):
+  - Database Migration V5:
+    * Created Flyway migration V5__create_notifications_and_analytics.sql.
+    * Added notifications table with foreign keys to organizations, users, and issues.
+    * Added sla_due_at TIMESTAMP and sla_breached BOOLEAN columns to issues table.
+  - Enums and Entities:
+    * NotificationType (ISSUE_SUBMITTED, ISSUE_ASSIGNED, STATUS_CHANGED, RFI_REQUESTED,
+      RFI_PROVIDED, EXPENDITURE_REQUESTED, EXPENDITURE_DECIDED, RESOLUTION_SUBMITTED,
+      VERIFICATION_COMPLETED, SLA_BREACH_WARNING).
+    * SlaStatus (ON_TRACK, AT_RISK, BREACHED).
+    * RecurrenceLevel (NONE, LOW, ELEVATED, CHRONIC_REPEAT).
+    * TimelineAction additions (SLA_BREACHED, SLA_WARNING).
+    * Created Notification entity, NotificationRepository with unread queries.
+    * Extended Issue entity with priority-based SLA calculation (CRITICAL=4h, HIGH=12h,
+      MEDIUM=48h, LOW=120h) and @PrePersist lifecycle hook.
+  - Core Intelligence & Analytics Services:
+    * NotificationService: persistent notification creation, unread count badge computation,
+      single notification mark-read, and bulk mark-all-read.
+    * RecurrenceIntelligenceService: rolling 90-day window correlation by exact asset tag and
+      location (building + room + category); recurrence level scoring; chronic repeat flag;
+      actionable overhaul/replacement recommendation generation; cross-tenant isolation.
+    * SlaService: deadline computation, dynamic status calculation (ON_TRACK, AT_RISK <= 25%
+      or <= 120m, BREACHED), automated breach escalation engine with timeline recording and
+      warning dispatch.
+    * AnalyticsService: live operational metric calculations including SLA compliance percentage,
+      mean time to resolve (MTTR in hours), priority distribution, status distribution,
+      department performance metrics, top recurring asset rankings, and approved/pending financial spend.
+  - REST Controllers:
+    * NotificationController (/api/v1/organizations/{orgId}/notifications):
+      - GET /: list user notifications (optional unreadOnly filter)
+      - GET /unread-count: unread badge counter
+      - PATCH /{id}/read: mark single notification as read
+      - POST /mark-all-read: bulk mark all as read
+    * AnalyticsController (/api/v1/organizations/{orgId}/analytics):
+      - GET /overview: operational analytics overview response
+      - POST /sla-escalate: trigger SLA breach detection and escalation
+    * IssueController:
+      - GET /{issueId}/recurrence: dedicated recurrence intelligence query
+  - Full Test Execution Results:
+    * Command: .\mvnw.cmd test
+    * Total Tests Executed: 112
+    * Failures: 0, Errors: 0, Skipped: 0 (BUILD SUCCESS in 01:05 min).
+    * 16 new automated integration tests added across:
+      - NotificationCenterIntegrationTest (4 tests)
+      - RecurringIssueIntelligenceIntegrationTest (8 tests)
+      - OperationalAnalyticsAndSlaIntegrationTest (4 tests)
+  - Status: Stage 6 COMPLETE.
+
+STAGE 7 EXECUTION LOG (Comprehensive End-to-End Workflow Validation):
+  - Created EndToEndWorkflowScenariosIntegrationTest.java covering all 10 mandatory operational scenarios:
+    1. Direct maintenance repair without finance approval (auto-approved spend under threshold, independent verification, closed)
+    2. Maintenance repair requiring conditional finance approval (spend > $100 transitions to AWAITING_FINANCE, finance approves, unblocks to IN_PROGRESS, resolved & verified)
+    3. Rejected report with recorded reason (mandatory rejection reason validated, timeline updated)
+    4. Request for information (RFI) dialogue and subsequent reporter resubmission (triage unblocked)
+    5. Correct routing between IT and Facilities (queue isolation between departments verified)
+    6. Role guard prevents unauthorized approval/rejection attempts (403 Forbidden enforced)
+    7. Missing reviewer configuration (unstaffed department safely routes to UNASSIGNED_TRIAGE and alerts admin)
+    8. Work completed but awaiting verification (separation of duties: technician cannot self-verify, 403 Forbidden)
+    9. Missed deadline and escalation (/analytics/sla-escalate flags breach and dispatches escalation alerts)
+    10. Recurring issue with accessible historical records (correlates repeat failures, calculates CHRONIC_REPEAT, provides overhaul advice)
+  - Full Test Execution Results:
+    * Command: .\mvnw.cmd test
+    * Total Tests Executed: 122
+    * Failures: 0, Errors: 0, Skipped: 0 (BUILD SUCCESS in 01:16 min).
+  - Status: Stage 7 COMPLETE.
+
+STAGE 8 EXECUTION LOG (Production React Web Application & Release Readiness):
+  - Frontend Application Architecture & Build:
+    * Scaffolding: Vite + React 18 in /frontend.
+    * Design System: Obsidian dark mode, glassmorphism, responsive tokens in index.css.
+    * Views Built:
+      - Navbar: role simulation switcher, unread notification center drawer, report issue button.
+      - ReporterView: metrics, search, status filter, and problem report table.
+      - SupervisorView: department triage queue, technician assignment dialog with active workload counters, RFI dialog, mandatory rejection dialog.
+      - TechnicianView: priority-sorted workboard (CRITICAL -> LOW), start work, progress % logger, spend request with auto-approval threshold check, resolution evidence submission.
+      - FinanceView: authorization queue for spend requests > $100, approve with budget code or decline with notes.
+      - VerificationView: Separation of Duties enforcement (technician cannot verify own work), supervisor/reporter sign-off and reopen rework loop.
+      - AnalyticsView: SLA compliance meter, MTTR in hours, recurring asset rankings, interactive SLA escalation scan trigger.
+      - IssueDetailModal: deep inspection with explainable progress, SLA timers, chronic recurrence alert, and immutable audit timeline.
+      - ReportIssueModal: category selection, asset tag validation, duplicate prevention.
+    * Build Outcome: npm run build completed cleanly in 379ms with 0 errors.
+  - Production Packaging & Deployment Deliverables:
+    * backend/Dockerfile: multi-stage Temurin JRE 21 Alpine image running under non-root unprivileged processhub user.
+    * frontend/Dockerfile: multi-stage Node 22 build to Nginx 1.27 Alpine production runtime.
+    * frontend/nginx.conf: SPA routing, reverse proxy for /api/ to backend:8080, gzip compression, security headers.
+    * docker-compose.yml: orchestrating db (PostgreSQL 16), backend (Spring Boot), frontend (Nginx) with healthchecks and persistent volumes.
+    * .env.example: comprehensive environment configuration template.
+    * .github/workflows/ci.yml: automated CI pipeline running backend tests, frontend build, and Docker builds.
+  - Status: Stage 8 COMPLETE. ALL STAGES (0 THROUGH 8) FULLY DELIVERED.
+
+--------------------------------------------------------------------------------
+7. FINAL RELEASE STATUS
+--------------------------------------------------------------------------------
+ProcessHub has reached Release Candidate (RC) readiness.
+All 122 backend tests passing, frontend builds cleanly, containerization complete,
+and all 10 business operational scenarios verified end-to-end.
 ================================================================================
+
+
+

@@ -1,0 +1,82 @@
+name: ProcessHub CI/CD Quality Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  backend-test:
+    name: Backend Test Suite (122 Tests)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21 LTS
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Run Backend Integration & End-to-End Suite
+        working-directory: ./backend
+        run: mvn clean test -B
+
+      - name: Publish Test Results
+        uses: scacap/action-surefire-report@v1
+        if: always()
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          report_paths: 'backend/target/surefire-reports/*.xml'
+
+  frontend-build:
+    name: Frontend Build & Asset Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Frontend Dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Build Production Frontend Bundle
+        working-directory: ./frontend
+        run: npm run build
+
+  docker-build-verify:
+    name: Docker Container Image Verification
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-build]
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Backend Container
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: false
+          tags: processhub/backend:test
+
+      - name: Build Frontend Container
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: false
+          tags: processhub/frontend:test

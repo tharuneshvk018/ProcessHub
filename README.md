@@ -2,7 +2,7 @@
 
 > Intelligent problem reporting, workflow coordination, approval, and resolution platform.
 
-ProcessHub is a modern software platform built for organizations to manage operational requests, maintenance problems, multi-tier approvals, and verified field resolutions across diverse departments—including Facilities, Electrical, Plumbing, IT, Laboratory Support, Administration, and Finance.
+ProcessHub is an enterprise-grade software platform built for organizations to manage operational requests, maintenance problems, multi-tier approvals, and verified field resolutions across diverse departments—including Facilities, Electrical, Plumbing, IT, Laboratory Support, Administration, and Finance.
 
 ---
 
@@ -11,66 +11,113 @@ ProcessHub is a modern software platform built for organizations to manage opera
 ProcessHub replaces scattered emails, phone calls, and generic ticket lists with a unified, accountable workflow engine:
 
 - **Context-Aware Dynamic Routing**: Issues are automatically routed based on category, subtype, campus/building location, asset identification, and severity—not just static category labels.
-- **Explainable Workflow Progress**: Eliminates ambiguous statuses. Both reporters and managers see the exact current stage, blocking reasons (e.g., awaiting $450 quote approval), responsible roles, and countdown to SLA escalation.
-- **Recurring-Issue Intelligence**: Correlates incoming reports against past asset and location history, alerting supervisors and technicians to repeat equipment failures and chronic defects.
-- **Resolution Accountability & Independent Verification**: Technicians record repair notes, root cause, and completion evidence. Work cannot be prematurely closed; independent verification is enforced before archival.
-- **Multi-Tier Approvals & Exception Handling**: Transparent handling of financial expenditure authorizations, requests for additional information (RFI), and automated fallbacks when reviewers are unavailable.
+- **Explainable Workflow Progress**: Eliminates ambiguous statuses. Both reporters and managers see the exact current stage, blocking reasons (e.g., awaiting $380 quote approval), responsible roles, and countdown to SLA escalation.
+- **Recurring-Issue Intelligence**: Correlates incoming reports against rolling 90-day asset and location history, alerting supervisors and technicians to repeat equipment failures (`CHRONIC_REPEAT`) and recommending overhaul over patch repairs.
+- **Resolution Accountability & Independent Verification**: Technicians record repair notes, root cause, labor hours, parts consumed, and completion evidence. Work cannot be prematurely closed; independent verification (separation of duties) is strictly enforced before archival.
+- **Conditional Financial Approvals**: Spend threshold evaluation ($100 limit); requests &le; $100 are auto-approved instantly without operational delay; requests &gt; $100 route to dedicated finance authorization queues.
+- **Multi-Tier Approvals & Exception Handling**: Transparent handling of requests for information (RFI), mandatory rejection rationales, and automated fallback to `UNASSIGNED_TRIAGE` when reviewers are unconfigured.
 
 ---
 
 ## 2. System Architecture
 
 ```
-Frontend (React 18 / Tailored Modern UI)
-       │ (REST APIs / JWT Auth)
+Frontend (React 18 / Vite / Obsidian Enterprise UI / Nginx)
+       │ (REST APIs / JWT Bearer Tokens / Port 3000 -> 80)
        ▼
-Backend Core (Spring Boot / Java 25 LTS)
- ├── Security & RBAC (Spring Security, BCrypt, Method Guards)
- ├── Context-Aware Routing Service
- ├── Workflow State Engine & Exception Coordinator
- ├── Recurring-Issue Intelligence Service
- ├── Notification & Audit Services
- └── Relational Persistence (PostgreSQL / Flyway Migrations)
+Backend Core (Spring Boot 3.3.5 / Java 21+ / Port 8080)
+ ├── Security & RBAC (Spring Security, BCrypt, Stateless JWT, Method Guards)
+ ├── Context-Aware Dynamic Routing Engine
+ ├── Explainable Progress & Workflow State Machine
+ ├── Technician Workboard & Conditional Spend Engine ($100 Threshold)
+ ├── Separation of Duties & Independent Verification Engine
+ ├── Recurring-Issue Intelligence Service (Rolling 90-day Correlation)
+ ├── Operational Analytics & SLA Escalation Service
+ ├── In-App Persistent Notification Center
+ └── Relational Persistence (PostgreSQL 16 / Flyway V1–V5 Migrations)
 ```
 
 ---
 
 ## 3. User Roles & Permission Hierarchy
 
-1. **Reporter**: Submits structured issues with location, asset, and category details; tracks explainable progress; responds to information requests; verifies simple resolutions.
-2. **Supervisor / Department Reviewer**: Triages routed issues, requests additional details, approves or rejects with mandatory rationale, and assigns work orders to eligible technicians.
-3. **Technician**: Receives assigned work orders, logs diagnosis and repair milestones, requests expenditure authorization when needed, and submits completion evidence.
-4. **Finance Approver**: Reviews expenditure requests exceeding delegated thresholds, authorizing budget allocation or requesting modifications.
-5. **Organization Administrator**: Configures organizations, departments, user memberships, category routing rules, SLA policies, and investigates unrouted exceptions.
+1. **Reporter (`ROLE_REPORTER`)**: Submits structured issues with location, asset, and category details; tracks explainable progress; responds to information requests (RFI); verifies simple resolutions.
+2. **Supervisor (`ROLE_SUPERVISOR`)**: Triages routed issues in supervised departments, initiates review, requests additional details, approves or rejects with mandatory rationale, and assigns work orders to technicians with live workload counters.
+3. **Technician (`ROLE_TECHNICIAN`)**: Receives assigned work orders in priority order (`CRITICAL` &rarr; `LOW`), logs diagnosis and progress %, requests expenditure authorization, and submits completion evidence. (Separation of duties prohibits technicians from verifying their own work).
+4. **Finance Approver (`ROLE_FINANCE_APPROVER`)**: Reviews expenditure requests exceeding delegated thresholds ($100.00), authorizing budget allocation or declining with operational notes.
+5. **Organization Administrator (`ROLE_ADMIN`)**: Configures organizations, departments, user memberships, category routing rules, SLA policies, and investigates unrouted exceptions.
 
 ---
 
-## 4. Getting Started & Development
+## 4. Getting Started & Operations
 
 ### Prerequisites
-- **Java Development Kit**: JDK 25 LTS (or JDK 21+)
-- **Node.js**: v20+ (v22 recommended) with npm
-- **Database**: PostgreSQL 15+ (or H2 in-memory for local testing)
+- **Java Development Kit**: JDK 21+ LTS (Tested on JDK 25 LTS)
+- **Node.js**: v20+ (Tested on Node v22.19 with npm 10.9)
+- **Docker & Docker Compose**: (Optional, for containerized multi-container deployment)
+- **PostgreSQL**: v15+ (Optional; automated tests use isolated H2 PostgreSQL mode)
 
-### Quick Start
-1. **Clone and Setup Environment**:
-   ```bash
-   cp .env.example .env
-   ```
-2. **Backend Services**:
-   ```bash
-   # Navigate to backend and run with maven wrapper
-   ./mvnw spring-boot:run
-   ```
-3. **Frontend Application**:
-   ```bash
-   cd frontend
-   npm install
-   npm run dev
-   ```
+### Option A: One-Command Docker Compose Deployment
+Run the complete multi-tier enterprise stack (PostgreSQL + Spring Boot Backend + React Frontend):
+```bash
+# 1. Copy environment template
+cp .env.example .env
+
+# 2. Build and launch all services in detached mode
+docker compose up --build -d
+
+# 3. Access web application
+# Frontend UI: http://localhost:3000
+# Backend API: http://localhost:8080/api/v1
+```
+
+### Option B: Local Development
+#### 1. Start Backend Service
+```bash
+cd backend
+# Run automated database migrations and launch Spring Boot API
+./mvnw spring-boot:run
+```
+Backend API will be active on `http://localhost:8080`.
+
+#### 2. Start Frontend Application
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Open `http://localhost:3000` in your web browser. The frontend includes a built-in operational role switcher allowing instant simulation across Alice (Reporter), Marcus (Supervisor), Bob (Technician), Fiona (Finance Approver), and Arthur (Admin).
 
 ---
 
-## 5. Implementation Roadmap & Verification
+## 5. Automated Verification & Testing
 
-ProcessHub is developed strictly following the phased milestone directive outlined in `PROJECT_PROGRESS.md` and `command.md`. All milestone achievements are backed by automated tests and documented in `report.txt`.
+The entire system is backed by comprehensive automated test suites:
+```bash
+# Run all 122 automated backend tests (Unit, Integration, Security, and E2E Scenarios)
+cd backend
+./mvnw test
+
+# Build production frontend bundle
+cd frontend
+npm run build
+```
+
+### End-to-End Test Suite Coverage (`EndToEndWorkflowScenariosIntegrationTest`):
+1. **Scenario 1**: Direct maintenance repair without finance approval (auto-approved spend under threshold, independent verification, closed)
+2. **Scenario 2**: Maintenance repair requiring conditional finance approval (spend > $100 transitions to `AWAITING_FINANCE`, finance approves, unblocks to `IN_PROGRESS`, resolved & verified)
+3. **Scenario 3**: Rejected report with recorded reason (mandatory rejection reason validated, timeline updated)
+4. **Scenario 4**: Request for information (RFI) dialogue and subsequent reporter resubmission (triage unblocked)
+5. **Scenario 5**: Correct routing between IT and Facilities (queue isolation between departments verified)
+6. **Scenario 6**: Role guard prevents unauthorized approval/rejection attempts (403 Forbidden enforced)
+7. **Scenario 7**: Missing reviewer configuration (unstaffed department safely routes to `UNASSIGNED_TRIAGE` and alerts admin)
+8. **Scenario 8**: Work completed but awaiting verification (separation of duties: technician cannot self-verify, 403 Forbidden)
+9. **Scenario 9**: Missed deadline and escalation (`/analytics/sla-escalate` flags breach and dispatches escalation alerts)
+10. **Scenario 10**: Recurring issue with accessible historical records (correlates repeat failures, calculates `CHRONIC_REPEAT`, provides overhaul advice)
+
+---
+
+## 6. Project Status
+- **Current Milestone**: Stage 8 Complete & Verified.
+- **Automated Tests**: 122 / 122 passing (0 failures, 0 errors).
+- **Release Status**: Release Candidate (RC) Enterprise Ready.

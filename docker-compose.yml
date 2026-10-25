@@ -1,0 +1,83 @@
+services:
+  # ----------------------------------------------------------------------------
+  # PostgreSQL Database Service
+  # ----------------------------------------------------------------------------
+  db:
+    image: postgres:16-alpine
+    container_name: processhub-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-processhub}
+      POSTGRES_USER: ${POSTGRES_USER:-processhub}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-processhub_secure_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    networks:
+      - processhub-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-processhub} -d ${POSTGRES_DB:-processhub}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ----------------------------------------------------------------------------
+  # ProcessHub Spring Boot Backend Service
+  # ----------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: processhub-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-processhub}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-processhub}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-processhub_secure_password}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      FLYWAY_ENABLED: "true"
+      APP_JWT_SECRET: ${APP_JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      APP_JWT_EXPIRATION_MS: ${APP_JWT_EXPIRATION_MS:-86400000}
+      APP_STORAGE_UPLOAD_DIR: /app/uploads
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:80}
+    volumes:
+      - backend_uploads:/app/uploads
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    networks:
+      - processhub-net
+
+  # ----------------------------------------------------------------------------
+  # ProcessHub React Web Frontend Service (Nginx)
+  # ----------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: processhub-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    networks:
+      - processhub-net
+
+# ------------------------------------------------------------------------------
+# Persistent Volumes & Networks
+# ------------------------------------------------------------------------------
+volumes:
+  postgres_data:
+    driver: local
+  backend_uploads:
+    driver: local
+
+networks:
+  processhub-net:
+    driver: bridge
