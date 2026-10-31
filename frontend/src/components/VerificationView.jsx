@@ -73,12 +73,12 @@ export default function VerificationView({
             <ShieldCheck size={22} color="var(--emerald-500)" />
           )}
           <div>
-            <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#FFF' }}>
+            <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>
               Separation of Duties Policy Enforcement
             </h4>
-            <p style={{ fontSize: '0.84rem', color: isTechnician ? '#FCA5A5' : '#6EE7B7' }}>
+            <p style={{ fontSize: '0.84rem', color: isTechnician ? 'var(--rose-500)' : 'var(--emerald-500)' }}>
               {isTechnician 
-                ? 'Active Role is TECHNICIAN (Bob Builder). By system policy, the technician who performed the repair cannot independently sign off and close their own work.'
+                ? 'Active Role is TECHNICIAN (Karthik Raj). By system policy, the technician who performed the repair cannot independently sign off and close their own work.'
                 : 'Active Role is SUPERVISOR / REPORTER. You are authorized to independently inspect and verify completed work.'}
             </p>
           </div>
@@ -158,7 +158,7 @@ export default function VerificationView({
 
               {/* Resolution Evidence Box */}
               <div style={{ 
-                background: 'rgba(15, 23, 42, 0.6)', 
+                background: 'var(--bg-secondary)', 
                 border: '1px solid var(--border-subtle)', 
                 borderRadius: 'var(--radius-md)', 
                 padding: '16px',
@@ -170,14 +170,14 @@ export default function VerificationView({
                   <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '4px' }}>
                     Work Summary by Technician:
                   </div>
-                  <p style={{ fontSize: '0.9rem', color: '#FFF', lineHeight: 1.4 }}>
+                  <p style={{ fontSize: '0.9rem', color: 'var(--text-primary)', lineHeight: 1.4 }}>
                     {issue.workSummary || 'Repair completed according to operational procedure.'}
                   </p>
                   
                   {issue.rootCause && (
                     <div style={{ marginTop: '10px' }}>
                       <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>Root Cause: </span>
-                      <span style={{ fontSize: '0.84rem', color: '#A5B4FC' }}>{issue.rootCause}</span>
+                      <span style={{ fontSize: '0.84rem', color: 'var(--indigo-600)', fontWeight: 600 }}>{issue.rootCause}</span>
                     </div>
                   )}
 

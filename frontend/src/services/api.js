@@ -76,7 +76,7 @@ class ApiService {
     });
     if (res.token) {
       this.setToken(res.token);
-      this.setCurrentUser(res.user);
+      this.setCurrentUser(res.user || res);
     }
     return res;
   }
@@ -290,6 +290,19 @@ class ApiService {
     return this.request(`/organizations/${orgId}/notifications/mark-all-read`, {
       method: 'POST',
     });
+  }
+
+  // Admin Monitoring & Reporting
+  async getAdminUsers(orgId = this.currentOrgId) {
+    return this.request(`/organizations/${orgId}/admin/users`);
+  }
+
+  async getAdminActivities(orgId = this.currentOrgId, limit = 50) {
+    return this.request(`/organizations/${orgId}/admin/activities?limit=${limit}`);
+  }
+
+  async getAdminSystemReport(orgId = this.currentOrgId) {
+    return this.request(`/organizations/${orgId}/admin/system-report`);
   }
 }
 

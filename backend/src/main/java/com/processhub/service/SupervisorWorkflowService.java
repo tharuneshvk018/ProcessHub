@@ -2,6 +2,7 @@ package com.processhub.service;
 
 import com.processhub.domain.entity.*;
 import com.processhub.domain.enums.IssueStatus;
+import com.processhub.domain.enums.NotificationType;
 import com.processhub.domain.enums.Priority;
 import com.processhub.domain.enums.Role;
 import com.processhub.domain.enums.TimelineAction;
@@ -27,6 +28,7 @@ public class SupervisorWorkflowService {
     private final OrganizationService organizationService;
     private final IssueService issueService;
     private final WorkflowRoutingService routingService;
+    private final NotificationService notificationService;
 
     public SupervisorWorkflowService(
             IssueRepository issueRepository,
@@ -36,7 +38,8 @@ public class SupervisorWorkflowService {
             UserRepository userRepository,
             OrganizationService organizationService,
             IssueService issueService,
-            WorkflowRoutingService routingService) {
+            WorkflowRoutingService routingService,
+            NotificationService notificationService) {
         this.issueRepository = issueRepository;
         this.timelineRepository = timelineRepository;
         this.membershipRepository = membershipRepository;
@@ -45,6 +48,7 @@ public class SupervisorWorkflowService {
         this.organizationService = organizationService;
         this.issueService = issueService;
         this.routingService = routingService;
+        this.notificationService = notificationService;
     }
 
     public User validateSupervisorOrAdmin(UUID orgId, String userEmail) {
@@ -333,6 +337,26 @@ public class SupervisorWorkflowService {
             );
             timelineRepository.save(timelineEvent);
 
+            // Notify technician
+            notificationService.createNotification(
+                    orgId,
+                    technician,
+                    saved,
+                    NotificationType.ISSUE_ASSIGNED,
+                    "Work Order Assigned: " + saved.getReferenceCode(),
+                    "You have been assigned to: " + saved.getTitle()
+            );
+
+            // Notify reporter
+            notificationService.createNotification(
+                    orgId,
+                    saved.getReporter(),
+                    saved,
+                    NotificationType.STATUS_CHANGED,
+                    "Report Approved & Assigned: " + saved.getReferenceCode(),
+                    "Your report has been approved and assigned to technician " + technician.getFullName()
+            );
+
             return issueService.mapToResponse(saved);
         } else {
             issue.setStatus(IssueStatus.UNDER_REVIEW);
@@ -356,6 +380,16 @@ public class SupervisorWorkflowService {
                     note
             );
             timelineRepository.save(timelineEvent);
+
+            // Notify reporter
+            notificationService.createNotification(
+                    orgId,
+                    saved.getReporter(),
+                    saved,
+                    NotificationType.STATUS_CHANGED,
+                    "Report Approved: " + saved.getReferenceCode(),
+                    "Your report has been approved by supervisor."
+            );
 
             return issueService.mapToResponse(saved);
         }
@@ -397,6 +431,16 @@ public class SupervisorWorkflowService {
         );
         timelineRepository.save(timelineEvent);
 
+        // Notify reporter
+        notificationService.createNotification(
+                orgId,
+                saved.getReporter(),
+                saved,
+                NotificationType.STATUS_CHANGED,
+                "Report Rejected: " + saved.getReferenceCode(),
+                "Your report was rejected with reason: " + reason
+        );
+
         return issueService.mapToResponse(saved);
     }
 
@@ -434,6 +478,16 @@ public class SupervisorWorkflowService {
                 "Request for Information: " + query
         );
         timelineRepository.save(timelineEvent);
+
+        // Notify reporter
+        notificationService.createNotification(
+                orgId,
+                saved.getReporter(),
+                saved,
+                NotificationType.RFI_REQUESTED,
+                "Information Requested: " + saved.getReferenceCode(),
+                "Supervisor requested clarification: " + query
+        );
 
         return issueService.mapToResponse(saved);
     }
@@ -490,6 +544,20 @@ public class SupervisorWorkflowService {
         );
         timelineRepository.save(timelineEvent);
 
+        // Notify department supervisors
+        List<OrganizationMembership> supervisors = membershipRepository
+                .findByOrganizationIdAndDepartmentIdAndRoleAndActiveTrue(orgId, saved.getDepartment().getId(), Role.ROLE_SUPERVISOR);
+        for (OrganizationMembership sup : supervisors) {
+            notificationService.createNotification(
+                    orgId,
+                    sup.getUser(),
+                    saved,
+                    NotificationType.RFI_PROVIDED,
+                    "Information Provided: " + saved.getReferenceCode(),
+                    "Reporter provided requested information for ticket " + saved.getReferenceCode()
+            );
+        }
+
         return issueService.mapToResponse(saved);
     }
 
@@ -539,6 +607,26 @@ public class SupervisorWorkflowService {
                 note
         );
         timelineRepository.save(timelineEvent);
+
+        // Notify technician
+        notificationService.createNotification(
+                orgId,
+                technician,
+                saved,
+                NotificationType.ISSUE_ASSIGNED,
+                "Work Order Assigned: " + saved.getReferenceCode(),
+                "You have been assigned to: " + saved.getTitle()
+        );
+
+        // Notify reporter
+        notificationService.createNotification(
+                orgId,
+                saved.getReporter(),
+                saved,
+                NotificationType.STATUS_CHANGED,
+                "Technician Assigned: " + saved.getReferenceCode(),
+                "Technician " + technician.getFullName() + " has been assigned to your issue."
+        );
 
         return issueService.mapToResponse(saved);
     }

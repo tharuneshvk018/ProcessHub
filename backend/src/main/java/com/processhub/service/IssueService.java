@@ -173,6 +173,16 @@ public class IssueService {
             );
         }
 
+        // Notify reporter with submission confirmation
+        notificationService.createNotification(
+                orgId,
+                currentUser,
+                saved,
+                com.processhub.domain.enums.NotificationType.ISSUE_SUBMITTED,
+                "Submission Confirmation: " + saved.getReferenceCode(),
+                "Your problem report '" + saved.getTitle() + "' has been submitted successfully."
+        );
+
         return mapToResponse(saved);
     }
 

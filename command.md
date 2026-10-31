@@ -1,525 +1,625 @@
-# PROCESSHUB — PRODUCT VISION, ARCHITECTURE AND IMPLEMENTATION DIRECTIVE
+# PROCESSHUB — FINAL WORKFLOW INTEGRATION, NOTIFICATION FIXES AND CODEBASE CLEANUP
 
-## 1. Product identity and mission
+## 1. Project context
 
-Product name: ProcessHub
+Project: ProcessHub  
+Description: Intelligent Workflow & Resolution Platform  
+Existing workspace: D:\ProcessHub
 
-Product category: Intelligent problem reporting, workflow coordination, approval, and resolution platform.
+The application has already been developed. This is an update to the existing project, not a request to rebuild it.
 
-Build ProcessHub as an independent software product intended for real organizations and their users.
+Your responsibility is to analyze the existing codebase and improve the integration between the five user roles, workflow tracking, notifications, administrative monitoring and application reliability.
 
-ProcessHub must have a consistent product identity, professional user experience, maintainable architecture, secure implementation, and a credible path to public release.
+**CRITICAL INSTRUCTION: Modify only what is necessary to implement the requirements below. Preserve all existing working features, UI design, theme, layouts, components, routes, business logic and project structure unless a specific change is required.**
 
-The product must not be presented anywhere in its user-facing interface, marketing copy, README, documentation, source-code comments, demo content, or onboarding as a college project, academic project, student assignment, university submission, or educational demonstration.
+Do not redesign the application. Do not replace existing implementations with unnecessary alternatives. Do not introduce unrelated features.
 
-Do not introduce academic framing into the product. Use professional product language appropriate for real customers, administrators, employees, service teams, and end users.
+---
 
-The product name must remain ProcessHub throughout the application, documentation, configuration, and branding unless a technical identifier cannot reasonably use the name.
+# 2. First: Perform a complete existing-project audit
 
-## 2. Core product problem
+Before making changes, inspect the entire project.
 
-Organizations receive problems and service requests through scattered channels such as messages, emails, verbal reports, forms, and phone calls.
+Analyze:
 
-This creates recurring difficulties:
-- Reports reach the wrong department.
-- Nobody clearly owns the next action.
-- Approvals and repairs become disconnected.
-- Users cannot tell why a request is delayed.
-- Repeated problems are reported without useful historical context.
-- Work may be marked complete without adequate verification.
-- Managers lack reliable information about recurring failures and resolution performance.
+- Frontend components, pages, routes and navigation.
+- Backend controllers, services, repositories and entities.
+- Database tables, relationships and migrations.
+- Authentication and authorization.
+- Existing five user roles and individual user accounts.
+- Issue reporting and workflow state transitions.
+- Notification creation, delivery and notification history.
+- Tracking and audit timeline implementation.
+- Admin dashboard and reporting functionality.
+- Existing API integrations and frontend API calls.
+- Git, Maven, JUnit, Docker and Jenkins configurations.
+- Existing test cases and their current results.
 
-ProcessHub should provide one structured path from initial reporting to verified resolution.
+Identify the actual reasons why:
 
-A user reports a problem. ProcessHub identifies the applicable workflow, routes the work to authorized people, coordinates required decisions, tracks progress, and records the outcome.
+1. Workflow tracking is not updating consistently.
+2. Notifications are not being delivered to the corresponding users.
+3. User activities are not integrated across all roles.
+4. The issue lifecycle is not consistently reflected in every dashboard.
+5. Any frontend and backend components are not communicating correctly.
 
-Do not reduce ProcessHub to a complaint submission form, a generic CRUD dashboard, a social feed, or a basic ticket status tracker.
+Prepare a short internal audit identifying the affected files, root causes and required modifications.
 
-## 3. Product scope and initial market
+Do not start rewriting the project before understanding the existing implementation.
 
-The initial product configuration should support a college or campus organization as the first deployment environment.
+# 3. Five individual users and role-based collaboration
 
-However, build the underlying architecture so that organization-specific departments, roles, categories, approval rules, locations, and workflows are configurable rather than permanently hardcoded.
+The application must demonstrate five separate users working collaboratively.
 
-The initial deployment should include realistic examples of:
-- Facilities and maintenance
-- Plumbing
-- Electrical maintenance
-- IT and network support
-- Laboratory support
-- Administration
-- Finance and expenditure approvals
+The five roles are:
 
-Do not implement separate applications for each department.
+| User | Responsibility |
+|---|---|
+| Reporter | Reports problems and tracks submitted issues |
+| Supervisor | Reviews reports, assigns work and verifies completion |
+| Technician | Receives assigned work and performs repairs |
+| Finance Approver | Reviews and approves or rejects expenditure requests |
+| Administrator | Monitors users, system activities and overall reports |
 
-Use a shared product and a common workflow system, with configurable organization-specific rules.
+## Individual user behavior
 
-Keep the initial scope manageable. Build a complete and reliable core before adding additional domains or advanced features.
+Each role must have its own individual authenticated account.
 
-## 4. Product research and differentiation
+When a user logs in:
 
-Before finalizing the feature set, examine relevant existing products and their documented capabilities.
+- The correct user identity must be displayed.
+- The correct role-specific dashboard must load.
+- Only the actions permitted for that role must be accessible.
+- The user must see their own notifications.
+- Their actions must be recorded under their own identity.
+- Their activity must be reflected in the shared issue workflow where relevant.
 
-Investigate representative products such as:
-- Jira Service Management for request intake, queues, assignment, and service workflows.
-- Camunda for workflow execution, human tasks, and conditional process steps.
-- GLPI for support requests, asset-related operations, and approval workflows.
-- Relevant facilities and maintenance-management products for equipment records, work orders, and recurring failures.
+All five users must work with the same underlying issue records and shared workflow state.
 
-Use official documentation, product pages, and credible technical sources. When possible, inspect real product workflows rather than relying only on marketing descriptions.
+Do not implement five isolated demo dashboards with unrelated static data.
 
-Create an internal comparison of:
-- Core capabilities already commonly available.
-- Typical user journeys and workflow patterns.
-- Limitations documented by product providers or reported by credible users.
-- Problems that remain poorly addressed for the intended target customers.
-- Opportunities that can be implemented realistically within ProcessHub.
+Do not use frontend-only role switching as a substitute for actual authentication and authorization.
 
-Distinguish verified findings from assumptions. Do not invent competitor weaknesses or claim a feature is unique without sufficient evidence.
+Do not allow users to perform another role's protected operations by changing a dropdown or modifying frontend state.
 
-Use the research to inform product decisions and implementation priorities. The resulting application must not simply reproduce an existing product's feature list or interface.
+Preserve existing authentication and account-management behavior wherever possible.
 
-Translate justified product decisions into useful functionality, not merely renamed features.
+# 4. Complete integrated workflow
 
-Do not turn the product interface, documentation, or ordinary development reports into a discussion of novelty, originality, or competitor analysis. Those are internal planning activities, not end-user features.
+Implement and verify the following end-to-end process.
 
-Do not add promotional claims such as "first of its kind", "world's first", "revolutionary", or "unique AI-powered solution" without independently substantiated evidence.
+## Stage 1 — Reporter submits a problem
 
-The objective is a meaningfully differentiated product, not a product that merely claims to be different.
+The reporter logs in and submits a problem containing:
 
-## 5. Product differentiation requirements
+- Problem title.
+- Description.
+- Department and category.
+- Priority or severity.
+- Building, room or location.
+- Asset information where applicable.
 
-Investigate and prioritize improvements that address actual workflow failures.
+After submission:
 
-Evaluate the following opportunities and implement only those justified by the research and achievable within the agreed scope.
+1. Save the issue in the shared database.
+2. Generate or retain its unique reference number.
+3. Set the correct initial workflow status.
+4. Record the submission event in the issue timeline.
+5. Notify the appropriate supervisor.
+6. Make the issue visible in the reporter's dashboard.
+7. Allow the reporter to track the issue.
 
-### A. Context-aware issue routing
+The reporter must receive a notification confirming successful submission.
 
-Routing should consider more than the category name.
+## Stage 2 — Supervisor receives and reviews the report
 
-Where configured, consider:
-- Issue category and subtype.
-- Location and affected asset.
-- Severity and operational impact.
-- Responsible department.
-- Required authorization.
-- Availability of eligible assignees.
-- Existing open issues affecting the same location or asset.
+The supervisor logs in.
 
-If the system cannot safely determine a destination, create a visible exception for an authorized administrator rather than silently assigning the issue incorrectly.
+The supervisor must see reports that are assigned or routed to their authorized review queue.
 
-### B. Explainable workflow progress
+When a new issue is submitted:
 
-Users and authorized staff should be able to understand:
-- The current stage of an issue.
-- Which action is required next.
-- Which role or team is responsible.
-- Whether an approval or additional information is blocking progress.
-- Why the issue was routed to a particular team, when appropriate.
-- What must happen before closure.
+- Create a notification for the corresponding supervisor.
+- Show it in that supervisor's notification history.
+- Display the issue in the supervisor's pending-review queue.
+- Allow the supervisor to inspect the complete issue details.
 
-Avoid ambiguous status labels that leave users unable to determine what is happening.
+The supervisor must be able to:
 
-### C. Recurring-issue intelligence
+- Approve the report.
+- Reject the report with a reason.
+- Request additional information.
+- Assign the approved work to an appropriate technician.
 
-Maintain useful issue and asset history.
+After a decision:
 
-Where sufficient data exists, identify repeated reports involving the same asset, location, category, or similar symptoms.
+- Update the shared issue status.
+- Record the decision and responsible supervisor in the timeline.
+- Notify the reporter about the review result.
+- If work is assigned, notify the selected technician.
+- Update the relevant dashboards immediately or through reliable data refresh.
 
-Provide useful context to authorized staff, including previous resolutions and the frequency of recurrence.
+The reporter must be able to see whether the report is under review, approved, rejected or awaiting additional information.
 
-Do not claim that similarity detection, root-cause analysis, or prediction is accurate without implementing and testing the relevant logic.
+## Stage 3 — Technician receives assigned work
 
-### D. Resolution accountability
+When the supervisor assigns a task:
 
-Preserve the relationship between:
-- The original report.
-- Review and approval decisions.
-- Work assignments.
-- Diagnosis and repair actions.
-- Financial authorization, where required.
-- Completion evidence.
-- Verification and closure.
+1. Save the technician assignment in the database.
+2. Update the issue's current workflow stage.
+3. Record the assignment event in the audit timeline.
+4. Generate a notification for the selected technician.
+5. Show the assigned task in that technician's workboard.
+6. Notify the reporter that the issue has moved to the assigned or repair stage.
 
-Do not allow a workflow to appear complete while mandatory steps remain outstanding.
+The technician must see only tasks assigned to their account or otherwise authorized work.
 
-### E. Workflow exception handling
+The technician must be able to:
 
-Design for practical failure scenarios:
-- No reviewer is configured.
-- An assignee is unavailable.
-- A deadline is missed.
-- An approval is rejected.
-- Additional information is required.
-- Expenditure is not authorized.
-- A repair fails verification.
-- An issue recurs after closure.
+- Open the assigned issue.
+- Review its description, priority, location and asset.
+- Start work.
+- Update repair progress.
+- Record diagnosis and work details.
+- Submit an expenditure request when necessary.
+- Mark the work as completed when the repair is finished.
 
-Each scenario must have a defined, auditable next action.
+Every meaningful action must update the shared issue record and timeline.
 
-These are product capabilities to evaluate and implement where justified. Do not add artificial complexity merely to make the application appear advanced.
+## Stage 4 — Conditional finance approval
 
-## 6. Authentication, organizations, and authorization
+Finance approval must be conditional.
 
-Provide one shared authentication system.
+If a technician requests expenditure that requires financial authorization:
 
-Different users must not need different login pages based on their role.
+1. Create an expenditure request linked to the issue.
+2. Store the amount and justification.
+3. Set the issue or work item to an appropriate finance-pending state.
+4. Notify the authorized finance approver.
+5. Display the request in the finance user's queue.
+6. Prevent the relevant expenditure-dependent work from proceeding until approval is granted.
 
-Each account should be associated with one or more authorized organization memberships. Each membership should define the user's role assignments and permitted departments.
+The finance approver must be able to:
 
-Initial roles:
-- Reporter
-- Department reviewer or supervisor
-- Technician or resolution team member
-- Finance approver
-- Organization administrator
+- Review the request.
+- Approve it.
+- Reject it with a reason.
 
-Implement role-based permissions and department-level access restrictions.
+After the decision:
 
-Support configurable role definitions and permission assignments where practical. Do not assume every organization uses identical job titles or organizational structures.
+- Save the finance decision.
+- Record the approver and timestamp.
+- Update the issue workflow.
+- Notify the technician about the decision.
+- Notify the supervisor and reporter where the decision materially changes the issue status.
+- Allow the technician to continue only when the required approval has been granted.
 
-An organization administrator must be able to configure departments, users, memberships, categories, workflow definitions, approval rules, and escalation policies.
+If finance approval is not required, the workflow must continue without introducing an unnecessary finance stage.
 
-Public registration must never automatically grant administrative, financial, or approval privileges.
+Do not force every issue through the finance queue.
 
-Use secure password hashing, Spring Security, validated authentication, appropriate session or token handling, and backend-enforced authorization.
+Important: Finance approval is an authorization gate for expenditure. It must occur before the relevant spending takes place, not be treated as an automatic approval after the repair is completed.
 
-Protect organization data from cross-organization access. A user must not obtain access by changing an identifier in a URL or API request.
+## Stage 5 — Technician completes the work
 
-Implement account recovery and secure invitation or approval flows according to the chosen authentication architecture.
+After the repair:
 
-## 7. Problem reporting and classification
+- Technician records the completion summary.
+- Technician records the diagnosis or root cause where applicable.
+- Technician records relevant labor and material details.
+- Technician attaches completion evidence if supported by the existing application.
+- The issue transitions to a resolved-pending-verification state.
+- The completion event is added to the audit timeline.
 
-Provide a professional reporting experience.
+Notify the supervisor that the work is ready for verification.
 
-Capture:
-- Issue category and subtype.
-- Title and description.
-- Location and relevant building or room.
-- Affected asset, when applicable.
-- Urgency and impact.
-- Optional supporting images or documents.
-- Submission timestamp and reporter identity.
+Notify the reporter that the repair has been completed and is awaiting verification.
 
-Use category-specific fields where they materially improve routing and diagnosis.
+Do not close the issue automatically when the technician clicks complete.
+
+## Stage 6 — Supervisor independently verifies the result
+
+The supervisor receives a notification that the technician has submitted the completed work.
+
+The supervisor must be able to inspect:
+
+- Original problem report.
+- Technician's diagnosis.
+- Work completion summary.
+- Expenditure details and approval, if applicable.
+- Completion evidence, if available.
+- Full workflow timeline.
+
+The supervisor must be able to:
+
+1. Verify and accept the completed work.
+2. Reject verification and reopen the issue with a reason.
+
+If accepted:
+
+- Set the issue to the final closed or verified-closed state.
+- Record the verifying supervisor and timestamp.
+- Notify the reporter about successful closure.
+- Notify the technician about verification completion.
+- Update all relevant dashboards and analytics.
+
+If rejected:
+
+- Reopen or return the issue to the appropriate work stage.
+- Record the rejection reason.
+- Notify the technician and reporter.
+- Make the required next action visible.
+
+Enforce separation of duties using the existing authorization model. Do not allow an unauthorized user to verify work.
+
+# 5. Individual notification system
+
+This is a critical requirement.
+
+Currently, notification behavior is not sufficiently integrated. Correct the existing notification implementation.
+
+Every notification must be associated with its intended recipient.
+
+A notification record should contain, as appropriate to the existing design:
+
+- Notification ID.
+- Recipient user ID.
+- Related issue ID.
+- Notification type.
+- Notification title.
+- Notification message.
+- Created timestamp.
+- Read/unread status.
+- Relevant navigation destination.
+
+## Recipient-specific notification behavior
+
+Notifications must be generated according to the actual workflow event.
 
 Examples:
-- Water leakage: location, severity, and evidence.
-- Laboratory equipment: asset identifier and observed fault.
-- Network issue: affected area and connection symptoms.
-- Electrical issue: location, observed problem, and relevant safety impact.
 
-Reporters must select the problem and its location, not manually guess which employee should receive it.
+| Event | Notification recipient |
+|---|---|
+| New problem submitted | Appropriate supervisor |
+| Submission confirmation | Reporter |
+| Supervisor approves or rejects | Reporter |
+| Additional information requested | Reporter |
+| Technician assigned | Assigned technician |
+| Assignment confirmation | Reporter |
+| Technician starts work | Reporter and relevant supervisor |
+| Expenditure requested | Finance approver |
+| Finance approves or rejects | Technician, supervisor and reporter as appropriate |
+| Technician completes work | Supervisor and reporter |
+| Verification accepted | Reporter and technician |
+| Verification rejected | Technician and reporter |
+| Issue closed | Reporter and relevant participants |
 
-Validate inputs, control upload types and sizes, prevent duplicate submissions caused by repeated clicks, and generate a readable reference such as PH-1001.
+Do not send every notification to every user.
 
-Do not claim that a report was delivered, accepted, approved, or resolved until the corresponding backend operation succeeds.
+Do not display all system notifications in every user's notification history.
 
-## 8. Workflow execution
+Each authenticated user must receive only notifications intended for their account, subject to any explicitly authorized administrative monitoring functionality.
 
-Build a reliable backend-controlled workflow service.
+## Notification history
 
-Workflow rules should be configurable through persisted definitions where appropriate. Do not spread hardcoded routing logic throughout controllers and frontend components.
+Each user must be able to:
 
-A workflow instance must track the lifecycle of an individual issue.
+- View their own notifications.
+- Identify read and unread notifications.
+- Open the associated issue from a notification.
+- See when the notification was generated.
+- Mark notifications as read.
+- Access their notification history.
 
-Support:
-- Submission and initial review.
-- Approval, rejection, and requests for information.
-- Department routing and work assignment.
-- Work-in-progress updates.
-- Conditional financial approval.
-- Completion evidence.
-- Verification.
-- Closure and authorized reopening.
-- Deadlines and escalation.
-- Exception handling.
+Unread counts must be calculated for the logged-in user, not globally.
 
-### Reference workflow: maintenance issue
+When a notification is opened, update its read status for that recipient.
 
-1. A reporter submits a water-leakage report.
-2. ProcessHub creates the issue and its workflow instance.
-3. Routing rules identify the authorized Facilities Supervisor.
-4. The supervisor reviews the report and decides the next permitted action.
-5. The report may be approved, rejected with a reason, or returned for more information.
-6. Approved work is assigned to an eligible maintenance team.
-7. The technician records diagnosis and repair progress.
-8. If additional spending requires authorization, a finance approval task is created.
-9. An approved expenditure allows the relevant work to proceed. A rejected expenditure returns the issue to an authorized decision-maker.
-10. The technician submits completed work for verification.
-11. An authorized person verifies the outcome.
-12. ProcessHub closes the issue and retains its history.
+Use reliable backend filtering by authenticated user ID. Do not rely only on frontend filtering.
 
-Simple repairs must not be delayed by unnecessary finance approvals.
+Prevent one user from accessing another user's notification history through API parameter manipulation.
 
-Urgent safety-related issues must follow an explicit escalation policy and must not remain silently blocked in routine queues.
+# 6. Integrated issue tracking and audit timeline
 
-Implement allowed status transitions, required permissions, mandatory decision reasons, and workflow conditions on the backend.
+Currently, issue tracking is not working consistently.
 
-## 9. Notifications and work queues
+Investigate and repair the complete tracking mechanism.
 
-Provide persistent in-app notifications.
+The issue timeline must represent the actual sequence of events, not hardcoded demonstration entries.
 
-Generate notifications for:
-- Successful submission.
-- New review tasks.
+Record relevant events such as:
+
+- Issue submitted.
+- Supervisor review started.
 - Approval or rejection.
-- Requests for more information.
-- Work assignment and reassignment.
-- Technician updates.
-- Financial approval requests and decisions.
-- Approaching or missed deadlines.
-- Escalations.
-- Verification requests.
-- Closure and reopening.
+- Information requested.
+- Technician assignment.
+- Technician accepted or started work.
+- Progress update.
+- Expenditure requested.
+- Finance approval or rejection.
+- Work completed.
+- Verification accepted or rejected.
+- Issue closed or reopened.
 
-Every notification must correspond to an actual backend event.
+Each event should contain:
 
-Users must see only information they are authorized to access.
+- Issue reference.
+- Event type.
+- Actor's user ID and display name.
+- Actor's role.
+- Timestamp.
+- Relevant description.
+- Previous and new status where applicable.
 
-Implement unread counts, timestamps, links to the relevant issue, and persistent read/unread state.
+## Tracking consistency
 
-Design work queues around the action required from each role.
+The same issue must show consistent information in:
 
-Supervisors should see pending reviews, unassigned work, overdue issues, and escalations.
+- Reporter dashboard.
+- Supervisor queue.
+- Technician workboard.
+- Finance queue when applicable.
+- Verification page.
+- Administrator reports.
 
-Technicians should see their assigned work, priorities, deadlines, and relevant history.
+When one user updates an issue, the change must be reflected for other authorized users.
 
-Finance approvers should see expenditure requests awaiting their decision.
+Use the existing API and data-fetching approach where possible. Implement appropriate refresh or update mechanisms without unnecessarily introducing complex real-time infrastructure.
 
-Administrators should see routing exceptions, workflow configuration problems, and organization-level operational metrics.
+Avoid inconsistent statuses between the frontend and backend.
 
-Do not rely on a shared dashboard with different labels as a substitute for proper role-specific functionality.
+The backend must be the authoritative source for workflow state.
 
-## 10. Issue history, audit, and verification
+# 7. Administrator monitoring and reports
 
-Implement a clear issue timeline.
+The administrator must have system-wide monitoring capabilities.
 
-Record important events:
-- Submission.
-- Review decisions.
-- Assignment changes.
-- Status transitions.
-- Approval decisions.
-- Financial authorization.
-- Diagnosis and repair updates.
-- Verification.
-- Closure and reopening.
-- Escalation.
+The administrator should be able to view:
 
-Record the actor, timestamp, relevant task or issue, action, and appropriate details.
+## User activity monitoring
 
-Ordinary users must not be able to edit or delete audit records.
+- Registered users.
+- User identities and roles.
+- Relevant account status.
+- Recent user activities.
+- Important actions performed by each user.
+- Issue submissions, reviews, assignments, decisions and closures.
+- Activity timestamps.
 
-Use transactional operations where issue changes, workflow tasks, notifications, and audit events must remain consistent.
+## Overall system reports
 
-Prevent duplicate approvals, unauthorized reassignment, and invalid transitions caused by repeated or concurrent requests.
+- Total reported issues.
+- Issues by current status.
+- Issues by department.
+- Issues by priority.
+- Pending reviews.
+- Assigned and active work.
+- Issues awaiting finance approval.
+- Issues awaiting verification.
+- Verified and closed issues.
+- Reopened issues.
+- SLA indicators and overdue cases, if supported by the existing system.
 
-Define who can verify a resolution. The person performing the repair must not automatically be the only person authorized to verify it when the configured policy requires independent verification.
+Administrator monitoring must be read-only for audit and reporting purposes unless the existing application already provides specific authorized management operations.
 
-## 11. Dashboards, analytics, and usability
+Do not expose passwords, JWT tokens, private credentials or other sensitive authentication data.
 
-Build the following functional areas:
-- Authentication and account management.
-- Reporter dashboard and issue submission.
-- My Reports and issue details.
-- Supervisor review queue.
-- Technician work queue.
-- Financial approval queue.
-- Notifications.
-- Department and user administration.
-- Category and workflow configuration.
-- Audit history and operational analytics.
+Admin monitoring must not silently change workflow records.
 
-Analytics may include:
-- Open and overdue issues.
-- Time spent in each workflow stage.
-- Resolution duration.
-- Recurring issues by location or asset.
-- Workload by department.
-- Issues awaiting approval or verification.
+# 8. Backend and frontend integration requirements
 
-Define metric calculations precisely. Do not show fabricated analytics, fake activity, or hardcoded production statistics.
+Inspect the existing API contracts and correct mismatches.
 
-Use realistic empty states when no data exists.
+Verify:
 
-The interface must be responsive, accessible, consistent, and suitable for professional use. Provide loading states, validation, clear errors, confirmation for destructive actions, and understandable status indicators.
+- Every frontend API call uses the correct backend endpoint.
+- Correct HTTP methods are used.
+- Authentication tokens are passed where required.
+- Backend authorization checks are enforced.
+- Request and response models match.
+- User IDs and issue IDs are consistent.
+- Database changes are persisted correctly.
+- Error responses are handled clearly.
+- Dashboard counts are based on actual stored data.
+- Notification records are persisted and retrieved correctly.
+- Workflow transitions are validated on the backend.
 
-Every visible primary action must work or be clearly identified as unavailable. Do not create decorative buttons that imply functionality that does not exist.
+Use database transactions for operations that must update multiple related records together, such as an assignment, workflow transition, audit event and notification creation.
 
-## 12. Technical architecture
+Prevent duplicate notifications when the same operation is retried.
 
-Preferred technology stack, subject to the current repository:
-- React frontend.
-- Java and Spring Boot backend.
-- PostgreSQL database.
-- Maven.
-- Spring Security.
-- JUnit 5 and Mockito.
+Use appropriate constraints and validation to prevent invalid assignments, duplicate actions and unauthorized status changes.
+
+Do not introduce a new framework or replace the current architecture just to solve an integration problem.
+
+# 9. Project code cleanup and unused file analysis
+
+Perform a careful codebase cleanup after the main integration changes.
+
+The objective is to remove genuinely unused code and files without breaking the application.
+
+Inspect:
+
+- Unused React components.
+- Unused pages and routes.
+- Unused CSS and style files.
+- Unused Java classes.
+- Unused methods and services.
+- Unused controllers and repositories.
+- Unused dependencies.
+- Duplicate components.
+- Old test files that are no longer relevant.
+- Unreferenced assets and images.
+- Temporary scripts and generated files.
+- Obsolete mock data and demonstration code.
+- Old configuration files that are no longer used.
+
+## Cleanup safety rules
+
+Do not delete files simply because they appear unused in one search result.
+
+Before removing anything:
+
+1. Search all imports and references.
+2. Check dynamic imports and route registration.
+3. Check dependency injection and Spring component scanning.
+4. Check reflection, configuration and resource loading.
+5. Check build scripts and Docker configuration.
+6. Check tests and runtime dependencies.
+7. Identify whether the file is required by the application or deployment environment.
+
+Create a backup or a dedicated Git commit before destructive cleanup.
+
+If a file's usage is uncertain, retain it and report it instead of deleting it.
+
+Do not remove:
+
+- Maven Wrapper files.
 - Database migrations.
-- OpenAPI documentation.
-- Git and GitHub.
+- Required environment configuration.
+- Docker configuration.
+- Jenkins configuration.
+- Required application resources.
+- Tests needed to validate the project.
+- Documentation that is still relevant.
+- Existing working modules.
 
-Inspect the existing repository before making architecture changes.
+Do not remove useful dependencies or files merely to reduce project size.
 
-Use clear separation of concerns:
-- Presentation layer.
-- API and validation layer.
-- Application services.
-- Workflow and authorization services.
-- Persistence layer.
-- Notification and audit services.
+After cleanup, verify that the complete project still builds and runs.
 
-Use DTOs, input validation, centralized error handling, pagination, appropriate indexes, database constraints, and documented API contracts.
+# 10. Testing requirements
 
-Use environment variables for configuration and provide an example environment file without real credentials.
+Test the entire application using five separate user accounts.
 
-Do not hardcode secrets, use insecure shortcuts, or expose private attachment URLs.
+Use the existing test framework and project configuration.
 
-Use a controlled file-storage implementation with appropriate access checks.
+At minimum, verify the following scenarios:
 
-Do not add unnecessary microservices. Prefer a well-structured, maintainable architecture that can be deployed and operated reliably.
+### Authentication and permissions
+- Each of the five roles can authenticate independently.
+- Each user receives the correct dashboard.
+- Unauthorized actions are rejected.
+- Users cannot access other users' notification histories.
 
-## 13. Testing and reliability
+### End-to-end workflow
+- Reporter submits an issue.
+- Supervisor receives the notification.
+- Supervisor reviews and assigns a technician.
+- Assigned technician receives the notification.
+- Technician updates work progress.
+- Finance receives a notification when an approval is required.
+- Finance approves or rejects the request.
+- Technician receives the decision.
+- Technician completes the work.
+- Supervisor receives the completion notification.
+- Supervisor verifies or rejects the result.
+- Reporter receives the final status notification.
 
-Write automated tests for the actual behavior.
+### Tracking and notifications
+- Every workflow event appears in the correct issue timeline.
+- Notifications are delivered only to intended recipients.
+- Read/unread status works independently for each user.
+- Dashboard counts update after workflow changes.
+- Notification history remains associated with the correct user.
+- Duplicate notifications are not generated for a single successful action.
 
-Test:
-- Authentication and permissions.
-- Organization and department isolation.
-- Issue creation and validation.
-- Category-based routing.
-- Approval and rejection.
-- Requests for additional information.
-- Conditional financial authorization.
-- Assignment and reassignment.
-- Notification generation.
-- Invalid status transitions.
-- Audit history.
-- Verification and closure.
-- Escalation and reopening.
-- Duplicate requests and concurrent actions.
-- Attachment access controls.
-- Failure handling and database persistence.
+### Administrator
+- Administrator can view authorized user activity.
+- Administrator can view overall reports.
+- Administrator cannot access secret authentication information.
+- Monitoring does not accidentally modify workflow state.
 
-Use unit and integration tests, and add end-to-end tests for critical user journeys where the current tooling supports them.
+### Regression testing
+- Existing registration and login still work.
+- Existing issue reporting still works.
+- Existing dashboards still work.
+- Existing design and navigation remain intact.
+- Existing working features are not broken.
 
-Required end-to-end scenarios include:
-1. Direct maintenance repair without financial approval.
-2. Maintenance repair requiring financial approval.
-3. Rejected report with a recorded reason.
-4. Request for information and subsequent resubmission.
-5. Correct routing between IT and Facilities.
-6. Unauthorized approval attempt.
-7. Missing reviewer configuration.
-8. Work completed but awaiting verification.
-9. Missed deadline and escalation.
-10. Recurring issue with accessible historical records.
+Run the available Maven and frontend test/build commands.
 
-Do not mark a feature complete merely because it compiles or a screen renders.
+Report actual test results. Never invent successful results or suppress test failures.
 
-Run the relevant tests and report actual results.
+# 11. Execution strategy
 
-## 14. Release and operations readiness
+Work in controlled stages.
 
-Prepare the product for a controlled release through incremental implementation.
+**Stage A — Audit**
+- Inspect the existing implementation.
+- Identify root causes.
+- Prepare a concise list of affected modules and files.
 
-Include:
-- Reliable setup and deployment instructions.
-- Versioned database migrations.
-- Secure environment configuration.
-- Error logging and operational diagnostics.
-- Health checks where appropriate.
-- Defined authorization and data-retention behavior.
-- Backup and recovery considerations.
-- Dependency and security checks.
-- Automated test execution.
-- Reproducible builds.
-- Release notes and versioning.
-- Documented known limitations.
+**Stage B — Workflow integration**
+- Correct the shared issue lifecycle.
+- Correct role-based actions and assignments.
+- Ensure backend persistence and consistent status transitions.
 
-Integrate SonarQube, Jenkins, and Docker incrementally.
+**Stage C — Notifications**
+- Implement recipient-specific notifications.
+- Fix notification history and read/unread behavior.
+- Test notifications independently for all five users.
 
-The CI pipeline should build the application, run tests, perform configured quality checks, and produce a reproducible artifact or container image.
+**Stage D — Tracking**
+- Correct the shared audit timeline.
+- Ensure all relevant dashboards display consistent workflow state.
 
-Do not claim that deployment, monitoring, backups, or recovery work unless they have actually been implemented and tested.
+**Stage E — Administrator**
+- Integrate user activity monitoring and system-wide reports.
 
-Distinguish a locally working build from a release candidate and a verified production deployment.
+**Stage F — Code cleanup**
+- Identify and remove only verified unused files and code.
+- Preserve uncertain or required components.
 
-## 15. Mandatory development discipline
+**Stage G — Full testing**
+- Run five-user end-to-end workflow tests.
+- Run regression tests.
+- Verify the project builds and can be demonstrated.
 
-The existing repository is the source of truth.
+Do not skip directly to cleanup before stabilizing the workflow.
 
-Before editing:
-- Inspect the files and Git status.
-- Identify working behavior.
-- Identify the root cause of reported defects.
-- Determine the smallest safe change.
+# 12. Strict preservation instructions
 
-During implementation:
-- Make small, reviewable changes.
-- Preserve unrelated working functionality.
-- Avoid unnecessary dependencies and rewrites.
-- Use reversible database migrations.
-- Keep secrets out of version control.
-- Test each affected feature.
-- Stop and explain any change requiring a major architectural decision.
+These instructions override any tendency to redesign or expand the application.
 
-After each milestone, report:
-- Functionality implemented.
-- Files changed.
-- Database or configuration changes.
-- Tests executed and actual results.
-- Known defects and risks.
-- Recommended next step.
+- Keep the current white theme and visual identity.
+- Keep the current page layouts and navigation.
+- Keep existing working components.
+- Keep existing product naming and branding.
+- Keep existing technology choices.
+- Do not create a new application.
+- Do not replace the database unnecessarily.
+- Do not add unrelated features.
+- Do not over-engineer real-time communication.
+- Do not convert this into a large enterprise SaaS platform.
+- Do not add new roles beyond the five specified roles.
+- Do not replace working mock-independent functionality with new mock data.
+- Do not claim completion without testing.
 
-Maintain:
-- PROJECT_PROGRESS.md for verified implementation progress.
-- ARCHITECTURE.md for actual technical decisions.
-- AGENTS.md for persistent repository-specific development rules.
-- README.md for product setup and operation.
+Make only the changes necessary to achieve a smooth, consistent and demonstrable five-user collaborative workflow.
 
-These documents must describe the actual application, not aspirational features that have not been implemented.
+# 13. Final report required
 
-Do not overwrite user changes or replace the entire application to fix a localized issue.
+After completing the work, provide a concise but detailed report containing:
 
-## 16. Implementation stages
+1. Root causes identified.
+2. Files and modules modified.
+3. Workflow changes implemented.
+4. Notification changes implemented.
+5. Tracking and audit changes implemented.
+6. Administrator functionality implemented.
+7. Unused files and code safely removed.
+8. Files retained because their usage was uncertain.
+9. Backend test results.
+10. Frontend test and build results.
+11. Five-user end-to-end test results.
+12. Remaining issues, if any.
+13. Exact commands to run the application.
+14. Exact steps to demonstrate the complete workflow.
 
-Stage 0: Inspect the repository, identify current behavior, and establish a verified baseline.
+Also update the existing project progress documentation to reflect the actual implementation.
 
-Stage 1: Stabilize the foundation, database configuration, and authentication.
+**Final objective:** ProcessHub must operate as one integrated application in which five individual users collaborate through a shared, persistent issue workflow, receive only their relevant notifications, see accurate tracking information and allow the administrator to monitor overall system activity.
 
-Stage 2: Implement organization membership, role permissions, departments, and category configuration.
-
-Stage 3: Implement issue submission, persistence, and the reporter dashboard.
-
-Stage 4: Implement routing, supervisor review, rejection, and requests for information.
-
-Stage 5: Implement work assignments, technician updates, conditional finance approval, and verification.
-
-Stage 6: Implement notifications, audit history, escalation, and operational analytics.
-
-Stage 7: Test the complete workflows, improve reliability, and prepare a release candidate.
-
-Stage 8: Integrate and verify the build pipeline, code-quality checks, Docker packaging, and deployment configuration.
-
-Do not attempt to implement all stages in a single large code-generation pass.
-
-## 17. Immediate instruction
-
-Begin with a read-only repository audit.
-
-Inspect the current project, run it where possible, examine the existing tests, and report the actual state of the code.
-
-Then produce:
-1. A concise architecture assessment.
-2. A list of working and incomplete features.
-3. A research-informed product improvement plan.
-4. The highest-priority implementation gaps.
-5. A small, testable first task.
-
-Do not perform a broad rewrite during the audit.
-
-Wait for confirmation before making major architectural changes.
-
-The objective is to develop ProcessHub as a credible, differentiated, maintainable software product whose features work end to end and whose release readiness is demonstrated by evidence—not by appearance or unsupported claims.
+Begin with the audit. Preserve everything that already works. Implement only the requested changes and verify the result.

@@ -3,6 +3,7 @@ package com.processhub.service;
 import com.processhub.domain.entity.*;
 import com.processhub.domain.enums.ExpenditureStatus;
 import com.processhub.domain.enums.IssueStatus;
+import com.processhub.domain.enums.NotificationType;
 import com.processhub.domain.enums.Role;
 import com.processhub.domain.enums.TimelineAction;
 import com.processhub.domain.repository.*;
@@ -30,6 +31,7 @@ public class FinanceWorkflowService {
     private final UserRepository userRepository;
     private final OrganizationService organizationService;
     private final IssueService issueService;
+    private final NotificationService notificationService;
 
     @Value("${processhub.finance.auto-approval-threshold:100.00}")
     private BigDecimal autoApprovalThreshold = new BigDecimal("100.00");
@@ -41,7 +43,8 @@ public class FinanceWorkflowService {
             OrganizationMembershipRepository membershipRepository,
             UserRepository userRepository,
             OrganizationService organizationService,
-            IssueService issueService) {
+            IssueService issueService,
+            NotificationService notificationService) {
         this.issueRepository = issueRepository;
         this.expenditureRepository = expenditureRepository;
         this.timelineRepository = timelineRepository;
@@ -49,6 +52,7 @@ public class FinanceWorkflowService {
         this.userRepository = userRepository;
         this.organizationService = organizationService;
         this.issueService = issueService;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -124,6 +128,20 @@ public class FinanceWorkflowService {
                     "Expenditure of $" + request.getAmount() + " exceeds auto-approval threshold ($" + autoApprovalThreshold + "). Submitted to Finance: " + request.getJustification()
             );
             timelineRepository.save(event);
+
+            // Notify authorized finance approver(s)
+            List<OrganizationMembership> financeApprovers = membershipRepository
+                    .findByOrganizationIdAndRoleAndActiveTrue(orgId, Role.ROLE_FINANCE_APPROVER);
+            for (OrganizationMembership fin : financeApprovers) {
+                notificationService.createNotification(
+                        orgId,
+                        fin.getUser(),
+                        saved,
+                        NotificationType.EXPENDITURE_REQUESTED,
+                        "Finance Authorization Required: " + saved.getReferenceCode(),
+                        "Technician " + currentUser.getFullName() + " requested $" + request.getAmount() + " for: " + request.getJustification()
+                );
+            }
 
             return issueService.mapToResponse(saved);
         }
@@ -262,6 +280,42 @@ public class FinanceWorkflowService {
             );
             timelineRepository.save(event);
 
+            // Notify assigned technician
+            if (saved.getAssignedTechnician() != null) {
+                notificationService.createNotification(
+                        orgId,
+                        saved.getAssignedTechnician(),
+                        saved,
+                        NotificationType.EXPENDITURE_DECIDED,
+                        "Expenditure Authorized: " + saved.getReferenceCode(),
+                        "Finance approved expenditure of $" + expenditure.getAmount() + ". Repair work may resume."
+                );
+            }
+
+            // Notify department supervisors
+            List<OrganizationMembership> supervisors = membershipRepository
+                    .findByOrganizationIdAndDepartmentIdAndRoleAndActiveTrue(orgId, saved.getDepartment().getId(), Role.ROLE_SUPERVISOR);
+            for (OrganizationMembership sup : supervisors) {
+                notificationService.createNotification(
+                        orgId,
+                        sup.getUser(),
+                        saved,
+                        NotificationType.EXPENDITURE_DECIDED,
+                        "Expenditure Authorized: " + saved.getReferenceCode(),
+                        "Finance authorized $" + expenditure.getAmount() + " for issue " + saved.getReferenceCode()
+                );
+            }
+
+            // Notify reporter
+            notificationService.createNotification(
+                    orgId,
+                    saved.getReporter(),
+                    saved,
+                    NotificationType.STATUS_CHANGED,
+                    "Work Resumed: " + saved.getReferenceCode(),
+                    "Expenditure was authorized; repair work has resumed on your issue."
+            );
+
             return issueService.mapToResponse(saved);
         } else {
             expenditure.setStatus(ExpenditureStatus.REJECTED);
@@ -296,6 +350,42 @@ public class FinanceWorkflowService {
                     eventNotes
             );
             timelineRepository.save(event);
+
+            // Notify assigned technician
+            if (saved.getAssignedTechnician() != null) {
+                notificationService.createNotification(
+                        orgId,
+                        saved.getAssignedTechnician(),
+                        saved,
+                        NotificationType.EXPENDITURE_DECIDED,
+                        "Expenditure Declined: " + saved.getReferenceCode(),
+                        "Finance declined expenditure of $" + expenditure.getAmount() + ": " + (request.getNotes() != null ? request.getNotes() : "Declined")
+                );
+            }
+
+            // Notify department supervisors
+            List<OrganizationMembership> supervisors = membershipRepository
+                    .findByOrganizationIdAndDepartmentIdAndRoleAndActiveTrue(orgId, saved.getDepartment().getId(), Role.ROLE_SUPERVISOR);
+            for (OrganizationMembership sup : supervisors) {
+                notificationService.createNotification(
+                        orgId,
+                        sup.getUser(),
+                        saved,
+                        NotificationType.EXPENDITURE_DECIDED,
+                        "Expenditure Declined: " + saved.getReferenceCode(),
+                        "Finance declined expenditure for " + saved.getReferenceCode() + ". Supervisor reassessment required."
+                );
+            }
+
+            // Notify reporter
+            notificationService.createNotification(
+                    orgId,
+                    saved.getReporter(),
+                    saved,
+                    NotificationType.STATUS_CHANGED,
+                    "Expenditure Declined: " + saved.getReferenceCode(),
+                    "Expenditure for repair was declined by finance; supervisor is evaluating alternatives."
+            );
 
             return issueService.mapToResponse(saved);
         }

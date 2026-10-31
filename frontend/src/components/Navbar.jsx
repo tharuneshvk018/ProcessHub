@@ -4,20 +4,38 @@ import {
   Bell, 
   PlusCircle, 
   UserCheck, 
-  Building2, 
+  ChevronDown,
   Check, 
   ExternalLink,
   Layers,
-  ChevronDown
+  User as UserIcon
 } from 'lucide-react';
 
+const ROLES = [
+  { key: 'ROLE_REPORTER', label: 'Reporter: Priya Sharma', roleName: 'Reporter', persona: 'Priya Sharma', department: 'Facilities' },
+  { key: 'ROLE_SUPERVISOR', label: 'Supervisor: Arjun Kumar', roleName: 'Supervisor', persona: 'Arjun Kumar', department: 'Facilities & Maintenance' },
+  { key: 'ROLE_TECHNICIAN', label: 'Technician: Karthik Raj', roleName: 'Technician', persona: 'Karthik Raj', department: 'Facilities & Maintenance' },
+  { key: 'ROLE_FINANCE_APPROVER', label: 'Finance: Divya Nair', roleName: 'Finance Approver', persona: 'Divya Nair', department: 'Finance Administration' },
+  { key: 'ROLE_ADMIN', label: 'Administrator: Rahul Verma', roleName: 'Administrator', persona: 'Rahul Verma', department: 'HQ Operations & Admin' },
+];
+
+const NAVIGATION_TABS = [
+  { key: 'reporter', label: 'My Reports' },
+  { key: 'supervisor', label: 'Supervisor Queue' },
+  { key: 'technician', label: 'Technician Workboard' },
+  { key: 'finance', label: 'Finance Queue' },
+  { key: 'verification', label: 'Verification' },
+  { key: 'analytics', label: 'Analytics & SLA' },
+];
+
 export default function Navbar({ 
-  currentRole, 
-  setCurrentRole, 
-  currentUser, 
-  notifications, 
+  currentRole = 'ROLE_REPORTER',
+  currentUser,
+  onSelectRole,
+  notifications = [], 
   onMarkNotificationRead, 
   onMarkAllRead, 
+  onSelectNotification,
   onOpenReportModal,
   activeTab,
   setActiveTab
@@ -25,15 +43,16 @@ export default function Navbar({
   const [showNotifs, setShowNotifs] = useState(false);
   const [showRoleMenu, setShowRoleMenu] = useState(false);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  // Recipient-specific notification filtering per active perspective
+  const filteredNotifications = (notifications || []).filter(n => {
+    if (currentRole === 'ROLE_ADMIN') {
+      return n.recipientRole === 'ROLE_ADMIN' || n.type === 'SLA_BREACH_WARNING' || n.type === 'SYSTEM_ALERT';
+    }
+    return n.recipientRole === currentRole || (Array.isArray(n.recipientRoles) && n.recipientRoles.includes(currentRole));
+  });
 
-  const roles = [
-    { key: 'ROLE_REPORTER', label: 'Alice (Reporter)', roleName: 'Reporter' },
-    { key: 'ROLE_SUPERVISOR', label: 'Marcus (Supervisor)', roleName: 'Supervisor' },
-    { key: 'ROLE_TECHNICIAN', label: 'Bob (Technician)', roleName: 'Technician' },
-    { key: 'ROLE_FINANCE_APPROVER', label: 'Fiona (Finance)', roleName: 'Finance Approver' },
-    { key: 'ROLE_ADMIN', label: 'Arthur (Admin)', roleName: 'Administrator' },
-  ];
+  const unreadCount = filteredNotifications.filter(n => !n.read).length;
+  const currentRoleConfig = ROLES.find(r => r.key === currentRole) || ROLES[0];
 
   return (
     <header className="app-header">
@@ -55,48 +74,16 @@ export default function Navbar({
 
       {/* Main Navigation Tabs */}
       <nav className="nav-tabs">
-        <button 
-          className={`nav-tab-btn ${activeTab === 'reporter' ? 'active' : ''}`}
-          onClick={() => setActiveTab('reporter')}
-          id="nav-tab-reporter"
-        >
-          My Reports
-        </button>
-        <button 
-          className={`nav-tab-btn ${activeTab === 'supervisor' ? 'active' : ''}`}
-          onClick={() => setActiveTab('supervisor')}
-          id="nav-tab-supervisor"
-        >
-          Supervisor Queue
-        </button>
-        <button 
-          className={`nav-tab-btn ${activeTab === 'technician' ? 'active' : ''}`}
-          onClick={() => setActiveTab('technician')}
-          id="nav-tab-technician"
-        >
-          Technician Workboard
-        </button>
-        <button 
-          className={`nav-tab-btn ${activeTab === 'finance' ? 'active' : ''}`}
-          onClick={() => setActiveTab('finance')}
-          id="nav-tab-finance"
-        >
-          Finance Queue
-        </button>
-        <button 
-          className={`nav-tab-btn ${activeTab === 'verification' ? 'active' : ''}`}
-          onClick={() => setActiveTab('verification')}
-          id="nav-tab-verification"
-        >
-          Verification
-        </button>
-        <button 
-          className={`nav-tab-btn ${activeTab === 'analytics' ? 'active' : ''}`}
-          onClick={() => setActiveTab('analytics')}
-          id="nav-tab-analytics"
-        >
-          Analytics & SLA
-        </button>
+        {NAVIGATION_TABS.map(tab => (
+          <button 
+            key={tab.key}
+            className={`nav-tab-btn ${activeTab === tab.key ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab.key)}
+            id={`nav-tab-${tab.key}`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </nav>
 
       {/* Header Actions */}
@@ -106,12 +93,13 @@ export default function Navbar({
           className="btn-primary" 
           onClick={onOpenReportModal}
           id="btn-report-issue"
+          title="Submit new problem report"
         >
           <PlusCircle size={17} />
           <span>Report Problem</span>
         </button>
 
-        {/* Notification Bell */}
+        {/* Recipient-Specific Notification Bell */}
         <div style={{ position: 'relative' }}>
           <button 
             style={{ 
@@ -120,11 +108,12 @@ export default function Navbar({
               border: '1px solid var(--border-subtle)', 
               borderRadius: 'var(--radius-md)', 
               padding: '8px 10px',
-              color: 'var(--text-secondary)'
+              color: 'var(--text-secondary)',
+              cursor: 'pointer'
             }}
             onClick={() => setShowNotifs(!showNotifs)}
             id="btn-notification-bell"
-            title="Notifications"
+            title={`Notifications for ${currentRoleConfig.persona}`}
           >
             <Bell size={18} />
             {unreadCount > 0 && (
@@ -155,7 +144,7 @@ export default function Navbar({
               position: 'absolute',
               right: 0,
               top: '44px',
-              width: '360px',
+              width: '380px',
               background: 'var(--bg-primary)',
               border: '1px solid var(--border-medium)',
               borderRadius: 'var(--radius-lg)',
@@ -169,13 +158,31 @@ export default function Navbar({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                background: 'rgba(30, 41, 59, 0.4)'
+                background: 'var(--bg-secondary)'
               }}>
-                <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Persistent Notifications</span>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+                    {currentRoleConfig.roleName} Notifications
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                    Delivered to {currentUser?.fullName || currentRoleConfig.persona} ({currentUser?.email || 'authenticated'})
+                  </div>
+                </div>
                 {unreadCount > 0 && (
                   <button 
-                    style={{ background: 'transparent', color: 'var(--indigo-500)', fontSize: '0.78rem', fontWeight: 600 }}
-                    onClick={onMarkAllRead}
+                    style={{ 
+                      background: 'transparent', 
+                      color: 'var(--indigo-400)', 
+                      fontSize: '0.78rem', 
+                      fontWeight: 600, 
+                      cursor: 'pointer', 
+                      border: 'none' 
+                    }}
+                    onClick={() => {
+                      if (onMarkAllRead) {
+                        onMarkAllRead(filteredNotifications.map(n => n.id));
+                      }
+                    }}
                   >
                     Mark all read
                   </button>
@@ -183,32 +190,38 @@ export default function Navbar({
               </div>
 
               <div style={{ maxHeight: '340px', overflowY: 'auto' }}>
-                {notifications.length === 0 ? (
+                {filteredNotifications.length === 0 ? (
                   <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                    No notifications
+                    No recipient notifications for {currentRoleConfig.roleName}.
                   </div>
                 ) : (
-                  notifications.map(notif => (
+                  filteredNotifications.map(notif => (
                     <div 
                       key={notif.id}
-                      onClick={() => onMarkNotificationRead(notif.id)}
+                      onClick={() => {
+                        if (onMarkNotificationRead) onMarkNotificationRead(notif.id);
+                        if (onSelectNotification) onSelectNotification(notif);
+                        setShowNotifs(false);
+                      }}
                       style={{
                         padding: '12px 16px',
                         borderBottom: '1px solid var(--border-subtle)',
-                        background: notif.read ? 'transparent' : 'rgba(99, 102, 241, 0.06)',
+                        background: notif.read ? 'transparent' : 'rgba(79, 70, 229, 0.08)',
                         cursor: 'pointer',
                         transition: 'background 0.15s ease'
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                        <span style={{ fontWeight: 600, fontSize: '0.84rem', color: notif.read ? 'var(--text-secondary)' : '#FFF' }}>
+                        <span style={{ fontWeight: 600, fontSize: '0.84rem', color: notif.read ? 'var(--text-secondary)' : 'var(--text-primary)' }}>
                           {notif.title}
                         </span>
-                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                          {notif.referenceCode}
-                        </span>
+                        {notif.referenceCode && (
+                          <span style={{ fontSize: '0.7rem', color: 'var(--indigo-400)', background: 'rgba(99, 102, 241, 0.12)', padding: '2px 6px', borderRadius: '4px' }}>
+                            {notif.referenceCode}
+                          </span>
+                        )}
                       </div>
-                      <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.4, margin: 0 }}>
                         {notif.message}
                       </p>
                     </div>
@@ -219,16 +232,28 @@ export default function Navbar({
           )}
         </div>
 
-        {/* Role Switcher Pill */}
+        {/* User Perspective Selector */}
         <div style={{ position: 'relative' }}>
           <button 
             className="role-switcher"
             onClick={() => setShowRoleMenu(!showRoleMenu)}
             id="btn-role-switcher"
+            title="Switch User Perspective"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '6px 12px',
+              background: 'var(--bg-primary)',
+              border: '1px solid var(--border-medium)',
+              borderRadius: 'var(--radius-lg)',
+              cursor: 'pointer',
+              color: 'var(--text-primary)'
+            }}
           >
-            <UserCheck size={15} color="var(--indigo-500)" />
-            <span className={`role-tag-pill ${currentRole}`}>
-              {roles.find(r => r.key === currentRole)?.roleName || currentRole}
+            <UserCheck size={16} color="var(--indigo-500)" />
+            <span className={`role-tag-pill ${currentRole}`} style={{ fontSize: '0.8rem', fontWeight: 600 }}>
+              {currentRoleConfig.label}
             </span>
             <ChevronDown size={14} color="var(--text-muted)" />
           </button>
@@ -237,23 +262,30 @@ export default function Navbar({
             <div style={{
               position: 'absolute',
               right: 0,
-              top: '42px',
-              width: '230px',
+              top: '44px',
+              width: '280px',
               background: 'var(--bg-primary)',
               border: '1px solid var(--border-medium)',
               borderRadius: 'var(--radius-lg)',
               boxShadow: 'var(--shadow-lg)',
-              zIndex: 60,
-              padding: '6px',
+              zIndex: 70,
+              padding: '8px',
             }}>
-              <div style={{ padding: '6px 10px', fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
-                Simulate Operational Role:
+              <div style={{ 
+                padding: '6px 10px', 
+                fontSize: '0.72rem', 
+                color: 'var(--text-muted)', 
+                fontWeight: 600, 
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em'
+              }}>
+                Select User Perspective:
               </div>
-              {roles.map(r => (
+              {ROLES.map(r => (
                 <button
                   key={r.key}
                   onClick={() => {
-                    setCurrentRole(r.key);
+                    onSelectRole && onSelectRole(r.key);
                     setShowRoleMenu(false);
                   }}
                   style={{
@@ -261,16 +293,27 @@ export default function Navbar({
                     textAlign: 'left',
                     padding: '8px 12px',
                     borderRadius: 'var(--radius-md)',
-                    background: currentRole === r.key ? 'var(--bg-surface-elevated)' : 'transparent',
-                    color: currentRole === r.key ? '#FFF' : 'var(--text-secondary)',
-                    fontSize: '0.85rem',
+                    background: currentRole === r.key ? 'rgba(99, 102, 241, 0.12)' : 'transparent',
+                    color: currentRole === r.key ? 'var(--text-primary)' : 'var(--text-secondary)',
+                    fontSize: '0.84rem',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'space-between'
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    border: 'none',
+                    marginBottom: '2px',
+                    transition: 'background 0.15s ease'
                   }}
                 >
-                  <span>{r.label}</span>
-                  {currentRole === r.key && <Check size={14} color="var(--indigo-500)" />}
+                  <div>
+                    <div style={{ fontWeight: currentRole === r.key ? 700 : 500, color: currentRole === r.key ? 'var(--indigo-400)' : 'var(--text-primary)' }}>
+                      {r.label}
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                      {r.department}
+                    </div>
+                  </div>
+                  {currentRole === r.key && <Check size={16} color="var(--indigo-400)" />}
                 </button>
               ))}
             </div>

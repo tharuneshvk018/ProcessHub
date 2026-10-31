@@ -49,7 +49,7 @@ services:
     volumes:
       - backend_uploads:/app/uploads
     ports:
-      - "${BACKEND_PORT:-8080}:8080"
+      - "${BACKEND_PORT:-8085}:8080"
     networks:
       - processhub-net
 

@@ -11,4 +11,6 @@ import java.util.UUID;
 public interface IssueTimelineEventRepository extends JpaRepository<IssueTimelineEvent, UUID> {
 
     List<IssueTimelineEvent> findByIssueIdOrderByCreatedAtAsc(UUID issueId);
+
+    List<IssueTimelineEvent> findByIssueOrganizationIdOrderByCreatedAtDesc(UUID orgId);
 }

@@ -147,7 +147,7 @@ export default function FinanceView({
                     </p>
                   </td>
                   <td>
-                    <div style={{ fontSize: '0.85rem' }}>{expenditure.requestedByName || 'Bob Builder'}</div>
+                    <div style={{ fontSize: '0.85rem' }}>{expenditure.requestedByName || 'Karthik Raj'}</div>
                     <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Technician</div>
                   </td>
                   <td>

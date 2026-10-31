@@ -48,7 +48,7 @@ export default function IssueDetailModal({
         {/* Header */}
         <div className="modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: '#A5B4FC', fontSize: '1.2rem' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--indigo-600)', fontSize: '1.2rem' }}>
               {issue.referenceCode}
             </span>
             <span className={`priority-chip ${issue.priority}`}>
@@ -60,7 +60,7 @@ export default function IssueDetailModal({
           </div>
 
           <button 
-            onClick={onClose}
+            onClick={onClose} 
             style={{ background: 'transparent', color: 'var(--text-muted)' }}
           >
             <X size={20} />
@@ -78,11 +78,11 @@ export default function IssueDetailModal({
 
           {/* Explainable Workflow Progress Box */}
           <div className="explainable-progress-box">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '10px' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: '#A5B4FC', letterSpacing: '0.05em' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '10px' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--indigo-600)', letterSpacing: '0.05em' }}>
                 Explainable Workflow Progress Engine
               </span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: issue.slaStatus === 'BREACHED' ? '#F87171' : '#34D399' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: issue.slaStatus === 'BREACHED' ? '#DC2626' : '#059669', fontWeight: 600 }}>
                 <Clock size={13} />
                 <span>SLA: {issue.slaStatus || 'ON_TRACK'}</span>
               </div>
@@ -95,7 +95,7 @@ export default function IssueDetailModal({
               </div>
               <div className="progress-banner-item">
                 <span className="progress-item-label">Responsible Role / Team</span>
-                <span className="progress-item-value" style={{ color: '#67E8F9' }}>{issue.responsibleRole || 'Unassigned'}</span>
+                <span className="progress-item-value" style={{ color: 'var(--indigo-600)' }}>{issue.responsibleRole || 'Unassigned'}</span>
               </div>
               <div className="progress-banner-item">
                 <span className="progress-item-label">Next Required Action</span>
@@ -132,8 +132,8 @@ export default function IssueDetailModal({
 
           {/* Reporter RFI Response Box */}
           {isMoreInfoRequested && (
-            <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 'var(--radius-md)', padding: '16px', marginBottom: '18px' }}>
-              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#FCD34D', marginBottom: '6px' }}>
+            <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 'var(--radius-md)', padding: '16px', marginBottom: '18px' }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#B45309', marginBottom: '6px' }}>
                 Action Required: Supervisor Requested More Information
               </div>
               <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginBottom: '10px' }}>
@@ -239,7 +239,7 @@ export default function IssueDetailModal({
                 issue.expenditures.map(exp => (
                   <div key={exp.id} style={{ background: 'var(--bg-surface)', padding: '14px', borderRadius: 'var(--radius-md)', marginBottom: '10px', border: '1px solid var(--border-subtle)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span style={{ fontWeight: 700, color: '#FCD34D' }}>${(exp.amount || 0).toFixed(2)} USD</span>
+                      <span style={{ fontWeight: 700, color: '#B45309' }}>${(exp.amount || 0).toFixed(2)} USD</span>
                       <span className={`status-badge ${exp.status}`}>{exp.status}</span>
                     </div>
                     <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)' }}>{exp.justification}</p>

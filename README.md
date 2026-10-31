@@ -68,7 +68,7 @@ docker compose up --build -d
 
 # 3. Access web application
 # Frontend UI: http://localhost:3000
-# Backend API: http://localhost:8080/api/v1
+# Backend API: http://localhost:8085/api/v1
 ```
 
 ### Option B: Local Development
@@ -78,7 +78,7 @@ cd backend
 # Run automated database migrations and launch Spring Boot API
 ./mvnw spring-boot:run
 ```
-Backend API will be active on `http://localhost:8080`.
+Backend API will be active on `http://localhost:8085`.
 
 #### 2. Start Frontend Application
 ```bash
@@ -86,7 +86,12 @@ cd frontend
 npm install
 npm run dev
 ```
-Open `http://localhost:3000` in your web browser. The frontend includes a built-in operational role switcher allowing instant simulation across Alice (Reporter), Marcus (Supervisor), Bob (Technician), Fiona (Finance Approver), and Arthur (Admin).
+Open `http://localhost:3000` in your web browser. The frontend provides genuine authenticated multi-user login with quick-selector credentials across the 5 enterprise personas:
+- **Priya Sharma** (Reporter): `priya.sharma@processhub.com` / `Password123!`
+- **Arjun Kumar** (Supervisor): `arjun.kumar@processhub.com` / `Password123!`
+- **Karthik Raj** (Technician): `karthik.raj@processhub.com` / `Password123!`
+- **Divya Nair** (Finance Approver): `divya.nair@processhub.com` / `Password123!`
+- **Rahul Verma** (Administrator): `rahul.verma@processhub.com` / `Password123!`
 
 ---
 
@@ -94,7 +99,7 @@ Open `http://localhost:3000` in your web browser. The frontend includes a built-
 
 The entire system is backed by comprehensive automated test suites:
 ```bash
-# Run all 122 automated backend tests (Unit, Integration, Security, and E2E Scenarios)
+# Run all 126 automated backend tests (Unit, Integration, Security, Admin, and E2E Scenarios)
 cd backend
 ./mvnw test
 
@@ -118,6 +123,6 @@ npm run build
 ---
 
 ## 6. Project Status
-- **Current Milestone**: Stage 8 Complete & Verified.
-- **Automated Tests**: 122 / 122 passing (0 failures, 0 errors).
+- **Current Milestone**: Stage 9 Complete & Verified.
+- **Automated Tests**: 126 / 126 passing (0 failures, 0 errors).
 - **Release Status**: Release Candidate (RC) Enterprise Ready.

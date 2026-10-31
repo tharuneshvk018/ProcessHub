@@ -260,9 +260,9 @@ export default function SupervisorView({
                     onChange={e => setAssigneeId(e.target.value)}
                     style={{ marginBottom: '16px' }}
                   >
-                    <option value="u-bob">Bob Builder (Facilities &bull; 2 active tasks)</option>
-                    <option value="u-dave">Dave Tech (Electrical &bull; 1 active task)</option>
-                    <option value="u-carlos">Carlos Network (IT Infrastructure &bull; 0 active tasks)</option>
+                    <option value="u-bob">Karthik Raj (Facilities &bull; 2 active tasks)</option>
+                    <option value="u-dave">Rohan Patel (Electrical &bull; 1 active task)</option>
+                    <option value="u-carlos">Suresh Menon (IT Infrastructure &bull; 0 active tasks)</option>
                   </select>
 
                   <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>

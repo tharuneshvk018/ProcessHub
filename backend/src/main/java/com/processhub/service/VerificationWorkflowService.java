@@ -2,6 +2,7 @@ package com.processhub.service;
 
 import com.processhub.domain.entity.*;
 import com.processhub.domain.enums.IssueStatus;
+import com.processhub.domain.enums.NotificationType;
 import com.processhub.domain.enums.Role;
 import com.processhub.domain.enums.TimelineAction;
 import com.processhub.domain.repository.*;
@@ -24,6 +25,7 @@ public class VerificationWorkflowService {
     private final UserRepository userRepository;
     private final OrganizationService organizationService;
     private final IssueService issueService;
+    private final NotificationService notificationService;
 
     public VerificationWorkflowService(
             IssueRepository issueRepository,
@@ -31,13 +33,15 @@ public class VerificationWorkflowService {
             OrganizationMembershipRepository membershipRepository,
             UserRepository userRepository,
             OrganizationService organizationService,
-            IssueService issueService) {
+            IssueService issueService,
+            NotificationService notificationService) {
         this.issueRepository = issueRepository;
         this.timelineRepository = timelineRepository;
         this.membershipRepository = membershipRepository;
         this.userRepository = userRepository;
         this.organizationService = organizationService;
         this.issueService = issueService;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -99,6 +103,28 @@ public class VerificationWorkflowService {
             );
             timelineRepository.save(event);
 
+            // Notify reporter
+            notificationService.createNotification(
+                    orgId,
+                    saved.getReporter(),
+                    saved,
+                    NotificationType.VERIFICATION_COMPLETED,
+                    "Issue Verified & Closed: " + saved.getReferenceCode(),
+                    "Resolution verified and sign-off granted by " + currentUser.getFullName() + ". Issue is now permanently closed."
+            );
+
+            // Notify technician
+            if (saved.getAssignedTechnician() != null) {
+                notificationService.createNotification(
+                        orgId,
+                        saved.getAssignedTechnician(),
+                        saved,
+                        NotificationType.VERIFICATION_COMPLETED,
+                        "Work Verified: " + saved.getReferenceCode(),
+                        "Your resolution for " + saved.getReferenceCode() + " was verified and signed off by " + currentUser.getFullName() + "."
+                );
+            }
+
             return issueService.mapToResponse(saved);
         } else {
             // Verification failed: reopen / return to IN_PROGRESS for rework
@@ -122,6 +148,28 @@ public class VerificationWorkflowService {
                     "Verification rejected by " + currentUser.getFullName() + ": " + request.getVerificationNotes()
             );
             timelineRepository.save(event);
+
+            // Notify technician
+            if (saved.getAssignedTechnician() != null) {
+                notificationService.createNotification(
+                        orgId,
+                        saved.getAssignedTechnician(),
+                        saved,
+                        NotificationType.VERIFICATION_COMPLETED,
+                        "Verification Rejected: " + saved.getReferenceCode(),
+                        "Verification was rejected by " + currentUser.getFullName() + ": " + request.getVerificationNotes() + ". Rework required."
+                );
+            }
+
+            // Notify reporter
+            notificationService.createNotification(
+                    orgId,
+                    saved.getReporter(),
+                    saved,
+                    NotificationType.STATUS_CHANGED,
+                    "Rework In Progress: " + saved.getReferenceCode(),
+                    "Verification rejected with notes: " + request.getVerificationNotes() + ". Returned to technician for rework."
+            );
 
             return issueService.mapToResponse(saved);
         }

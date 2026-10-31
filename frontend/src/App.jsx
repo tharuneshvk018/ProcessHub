@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Bell, CheckCircle2, AlertTriangle, X, ArrowRight, ShieldCheck, Clock } from 'lucide-react';
 import Navbar from './components/Navbar';
 import ReporterView from './components/ReporterView';
 import SupervisorView from './components/SupervisorView';
@@ -15,45 +16,109 @@ import {
   DEMO_CATEGORIES, 
   DEMO_USERS 
 } from './services/mockData';
-import api from './services/api';
+import { api } from './services/api';
 
 export default function App() {
   const [currentRole, setCurrentRole] = useState('ROLE_REPORTER');
+  const [currentUser, setCurrentUser] = useState(() => DEMO_USERS['ROLE_REPORTER']);
   const [activeTab, setActiveTab] = useState('reporter');
   const [issues, setIssues] = useState(INITIAL_ISSUES);
   const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
-  const [departments] = useState(DEMO_DEPARTMENTS);
-  const [categories] = useState(DEMO_CATEGORIES);
-
+  const [departments, setDepartments] = useState(DEMO_DEPARTMENTS);
+  const [categories, setCategories] = useState(DEMO_CATEGORIES);
   const [selectedIssue, setSelectedIssue] = useState(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [toast, setToast] = useState(null);
 
-  // Automatically switch tab when role is toggled for smooth demo flow
+  // Switch user perspective handler
+  const handleSelectRole = (newRole) => {
+    setCurrentRole(newRole);
+    const persona = DEMO_USERS[newRole] || DEMO_USERS.reporter;
+    setCurrentUser(persona);
+
+    // Auto-navigate to that role's primary operational workspace
+    if (newRole === 'ROLE_REPORTER') setActiveTab('reporter');
+    else if (newRole === 'ROLE_SUPERVISOR') setActiveTab('supervisor');
+    else if (newRole === 'ROLE_TECHNICIAN') setActiveTab('technician');
+    else if (newRole === 'ROLE_FINANCE_APPROVER') setActiveTab('finance');
+    else if (newRole === 'ROLE_ADMIN') setActiveTab('analytics');
+  };
+
+  // Real-time Toast Notification trigger
+  const showToast = (title, message, recipientInfo) => {
+    setToast({
+      id: Date.now(),
+      title,
+      message,
+      recipientInfo,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    });
+  };
+
   useEffect(() => {
-    if (currentRole === 'ROLE_REPORTER') setActiveTab('reporter');
-    else if (currentRole === 'ROLE_SUPERVISOR') setActiveTab('supervisor');
-    else if (currentRole === 'ROLE_TECHNICIAN') setActiveTab('technician');
-    else if (currentRole === 'ROLE_FINANCE_APPROVER') setActiveTab('finance');
-    else if (currentRole === 'ROLE_ADMIN') setActiveTab('analytics');
-  }, [currentRole]);
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
-  // Sync selected issue details when state updates
+  // Keep selected issue in sync when issue list updates
   useEffect(() => {
     if (selectedIssue) {
-      const refreshed = issues.find(i => i.id === selectedIssue.id);
+      const refreshed = issues.find(i => i.id === selectedIssue.id || i.referenceCode === selectedIssue.referenceCode);
       if (refreshed) setSelectedIssue(refreshed);
     }
   }, [issues]);
 
+  // Optional background data sync with backend if online
+  const refreshBackendData = useCallback(async () => {
+    try {
+      const [deptRes, catRes] = await Promise.allSettled([
+        api.getDepartments(),
+        api.getCategories()
+      ]);
+      if (deptRes.status === 'fulfilled' && Array.isArray(deptRes.value) && deptRes.value.length > 0) {
+        setDepartments(deptRes.value);
+      }
+      if (catRes.status === 'fulfilled' && Array.isArray(catRes.value) && catRes.value.length > 0) {
+        setCategories(catRes.value);
+      }
+    } catch {
+      // Backend is optional/in-memory fallback active
+    }
+  }, []);
+
+  // Silently authenticate active persona against backend if running
+  useEffect(() => {
+    const persona = DEMO_USERS[currentRole];
+    if (persona && persona.email) {
+      api.login(persona.email, 'Password123!')
+        .then(() => refreshBackendData())
+        .catch(() => {
+          // In-memory demo state remains seamlessly active
+        });
+    }
+  }, [currentRole, refreshBackendData]);
+
+  // Atomically append recipient-targeted notifications
+  const addNotifications = (newNotifs) => {
+    const prepared = newNotifs.map(n => ({
+      id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+      read: false,
+      createdAt: new Date().toISOString(),
+      ...n
+    }));
+    setNotifications(prev => [...prepared, ...prev]);
+  };
+
   // ==========================================
-  // Workflow Engine Handlers
+  // Collaborative Workflow Engine Handlers
   // ==========================================
 
-  // 1. Problem Reporting (Atomic Reference + Routing)
-  const handleCreateIssue = (formData) => {
+  // 1. Problem Reporting (Reporter perspective)
+  const handleCreateIssue = async (formData) => {
     const nextNum = 1000 + issues.length + 1;
     const refCode = `PH-${nextNum}`;
-
     const dept = departments.find(d => d.id === formData.departmentId);
     const cat = categories.find(c => c.id === formData.categoryId);
 
@@ -64,482 +129,858 @@ export default function App() {
       description: formData.description,
       departmentId: formData.departmentId,
       departmentName: dept?.name || 'Facilities & Maintenance',
-      categoryName: cat?.name || 'Plumbing',
+      categoryName: cat?.name || 'Plumbing & Water Systems',
       subtype: formData.subtype,
       locationBuilding: formData.locationBuilding,
       locationRoom: formData.locationRoom,
       assetId: formData.assetId,
       priority: formData.priority,
       status: 'UNDER_REVIEW',
-      reporterName: 'Alice Reporter',
-      reporterEmail: 'alice.reporter@processhub.com',
+      reporterName: currentUser?.fullName || 'Priya Sharma',
+      reporterEmail: currentUser?.email || 'priya.sharma@processhub.com',
       assignedTechnicianName: null,
       currentStage: 'UNDER_SUPERVISOR_REVIEW',
       responsibleRole: 'ROLE_SUPERVISOR',
       blockingReason: null,
-      nextAction: `Supervisor (${dept?.name || 'Department'}) must review report and assign eligible technician`,
-      slaDueAt: new Date(Date.now() + 1000 * 60 * 60 * (formData.priority === 'CRITICAL' ? 4 : formData.priority === 'HIGH' ? 12 : 48)).toISOString(),
-      slaBreached: false,
+      nextAction: 'Supervisor (Arjun Kumar) must review report and assign qualified technician',
+      slaDueAt: new Date(Date.now() + 1000 * 60 * 60 * 12).toISOString(),
       slaStatus: 'ON_TRACK',
-      slaRemainingMinutes: formData.priority === 'CRITICAL' ? 240 : 720,
+      slaRemainingMinutes: 720,
       createdAt: new Date().toISOString(),
       timeline: [
         {
           id: `tl-${Date.now()}-1`,
-          actorName: 'Alice Reporter',
+          actorName: currentUser?.fullName || 'Priya Sharma',
           action: 'ISSUE_SUBMITTED',
-          notes: `Problem report submitted: ${formData.title}`,
+          notes: `Problem report submitted: "${formData.title}" in ${formData.locationBuilding || 'Facilities'} ${formData.locationRoom || ''}`,
           timestamp: new Date().toISOString()
         },
         {
           id: `tl-${Date.now()}-2`,
           actorName: 'Routing Engine',
           action: 'STATUS_CHANGED',
-          notes: `Context-aware routing dispatched report to ${dept?.name || 'Facilities'} supervisor queue`,
+          notes: `Context routing engine assigned issue to ${dept?.name || 'Facilities'} Supervisor Queue`,
           timestamp: new Date().toISOString()
         }
       ],
       expenditures: [],
     };
 
-    // If repeat asset tag, attach recurrence intelligence
-    if (formData.assetId === 'CHILLER-CH-400') {
-      newIssue.recurrenceIntelligence = {
-        totalRecurrences: 3,
-        assetMatchCount: 3,
-        locationMatchCount: 3,
-        recurrenceLevel: 'CHRONIC_REPEAT',
-        chronic: true,
-        recommendation: 'Chronic repeat failure: 3 similar incidents recorded in the last 90 days. Recommend comprehensive replacement rather than routine patch repair.',
-        relatedIssues: [
-          { id: 'h-1', referenceCode: 'PH-0982', title: 'Chiller vibration alarm', status: 'CLOSED' },
-          { id: 'h-2', referenceCode: 'PH-0941', title: 'Thermal shutdown', status: 'CLOSED' }
-        ]
-      };
+    // Update shared issues
+    setIssues(prev => [newIssue, ...prev]);
+    setIsReportModalOpen(false);
+
+    // Notifications:
+    addNotifications([
+      {
+        type: 'SUBMISSION_CONFIRMED',
+        title: `Submission Confirmed: ${refCode}`,
+        message: `Your report "${formData.title}" has been registered and routed to Facilities Supervisor Arjun Kumar.`,
+        referenceCode: refCode,
+        recipientRole: 'ROLE_REPORTER',
+        recipientEmail: 'priya.sharma@processhub.com'
+      },
+      {
+        type: 'ISSUE_SUBMITTED',
+        title: `New Problem Reported: ${refCode}`,
+        message: `High priority problem "${formData.title}" reported by Priya Sharma in ${formData.locationBuilding || 'Facilities'}. Triage required.`,
+        referenceCode: refCode,
+        recipientRole: 'ROLE_SUPERVISOR',
+        recipientEmail: 'arjun.kumar@processhub.com'
+      }
+    ]);
+
+    showToast(
+      `New Problem Reported (#${refCode})`,
+      `Registered "${formData.title}". Supervisor Arjun Kumar notified for triage.`,
+      `Delivered to: Supervisor Arjun Kumar & Reporter Priya Sharma`
+    );
+
+    // Background sync to backend if online
+    try {
+      await api.createIssue(undefined, {
+        title: formData.title,
+        description: formData.description,
+        departmentId: formData.departmentId,
+        categoryId: formData.categoryId,
+        subtype: formData.subtype,
+        locationBuilding: formData.locationBuilding,
+        locationRoom: formData.locationRoom,
+        assetId: formData.assetId,
+        priority: formData.priority,
+      });
+    } catch {
+      // Backend offline, in-memory state updated
     }
+  };
 
-    setIssues([newIssue, ...issues]);
+  // 2. Supervisor Triage: Start Review
+  const handleStartReview = async (issueId) => {
+    const target = issues.find(i => i.id === issueId || i.referenceCode === issueId);
+    if (!target) return;
 
-    // Dispatch notification
-    const newNotif = {
-      id: `notif-${Date.now()}`,
-      type: 'ISSUE_SUBMITTED',
-      title: `New Ticket: ${refCode}`,
-      message: `${formData.title} reported in ${formData.locationBuilding}`,
-      referenceCode: refCode,
-      read: false,
+    const newTimelineEvent = {
+      id: `tl-${Date.now()}`,
+      actorName: currentUser?.fullName || 'Arjun Kumar',
+      action: 'REVIEW_STARTED',
+      notes: 'Supervisor initiated diagnostic review, priority validation, and technician matching',
+      timestamp: new Date().toISOString()
+    };
+
+    const updated = {
+      ...target,
+      status: 'UNDER_REVIEW',
+      currentStage: 'UNDER_SUPERVISOR_REVIEW',
+      responsibleRole: 'ROLE_SUPERVISOR',
+      slaStatus: 'ON_TRACK',
+      nextAction: 'Review diagnostic details and assign qualified technician',
+      timeline: [...(target.timeline || []), newTimelineEvent]
+    };
+
+    setIssues(prev => prev.map(i => (i.id === target.id ? updated : i)));
+    if (selectedIssue?.id === target.id) setSelectedIssue(updated);
+
+    addNotifications([
+      {
+        type: 'STATUS_CHANGED',
+        title: `Review Underway: ${target.referenceCode}`,
+        message: `Supervisor Arjun Kumar has commenced diagnostic review on "${target.title}".`,
+        referenceCode: target.referenceCode,
+        recipientRole: 'ROLE_REPORTER',
+        recipientEmail: 'priya.sharma@processhub.com'
+      }
+    ]);
+
+    showToast(
+      `Supervisor Review Commenced (#${target.referenceCode})`,
+      `Arjun Kumar started triage. Reporter Priya Sharma notified.`,
+      `Delivered to: Reporter Priya Sharma`
+    );
+
+    try {
+      await api.startReview(undefined, issueId);
+    } catch {
+      // Offline fallback
+    }
+  };
+
+  // 3. Supervisor Assignment (Assign Technician)
+  const handleAssignTechnician = async (issueId, technicianId, instructions) => {
+    const target = issues.find(i => i.id === issueId || i.referenceCode === issueId);
+    if (!target) return;
+
+    const techNames = {
+      'tech-1': 'Karthik Raj (Senior HVAC & Mechanical)',
+      'tech-2': 'Suresh Menon (Master Plumber)',
+      'tech-3': 'Vikram Sethi (High-Voltage Electrician)'
+    };
+    const assignedName = techNames[technicianId] || 'Karthik Raj';
+
+    const newTimelineEvent = {
+      id: `tl-${Date.now()}`,
+      actorName: currentUser?.fullName || 'Arjun Kumar',
+      action: 'TECHNICIAN_ASSIGNED',
+      notes: `Assigned work order to ${assignedName}. Instructions: "${instructions || 'Inspect site, confirm diagnosis and execute remediation'}"`,
+      timestamp: new Date().toISOString()
+    };
+
+    const updated = {
+      ...target,
+      status: 'ASSIGNED',
+      assignedTechnicianName: assignedName,
+      assignedTechnicianId: technicianId,
+      currentStage: 'ASSIGNED_WORK_ORDER',
+      responsibleRole: 'ROLE_TECHNICIAN',
+      blockingReason: null,
+      slaStatus: 'ON_TRACK',
+      nextAction: `Technician (${assignedName}) must inspect site, confirm diagnosis and initiate repair`,
+      timeline: [...(target.timeline || []), newTimelineEvent]
+    };
+
+    setIssues(prev => prev.map(i => (i.id === target.id ? updated : i)));
+    if (selectedIssue?.id === target.id) setSelectedIssue(updated);
+
+    // Notifications:
+    addNotifications([
+      {
+        type: 'ASSIGNMENT',
+        title: `Work Order Assigned: ${target.referenceCode}`,
+        message: `Assigned to you by Arjun Kumar: "${target.title}". Instructions: "${instructions || 'Inspect and execute remediation'}"`,
+        referenceCode: target.referenceCode,
+        recipientRole: 'ROLE_TECHNICIAN',
+        recipientEmail: 'karthik.raj@processhub.com'
+      },
+      {
+        type: 'ASSIGNMENT',
+        title: `Technician Assigned: ${target.referenceCode}`,
+        message: `Karthik Raj has been assigned to your report "${target.title}". Work order dispatched.`,
+        referenceCode: target.referenceCode,
+        recipientRole: 'ROLE_REPORTER',
+        recipientEmail: 'priya.sharma@processhub.com'
+      }
+    ]);
+
+    showToast(
+      `Technician Assigned (#${target.referenceCode})`,
+      `Work order assigned to Karthik Raj. Technician and Reporter notified in real time.`,
+      `Delivered to: Technician Karthik Raj & Reporter Priya Sharma`
+    );
+
+    try {
+      await api.assignTechnician(undefined, issueId, technicianId, instructions);
+    } catch {
+      // Offline fallback
+    }
+  };
+
+  // 4. Supervisor Rejection
+  const handleRejectIssue = async (issueId, reason) => {
+    const target = issues.find(i => i.id === issueId || i.referenceCode === issueId);
+    if (!target) return;
+
+    const newTimelineEvent = {
+      id: `tl-${Date.now()}`,
+      actorName: currentUser?.fullName || 'Arjun Kumar',
+      action: 'ISSUE_REJECTED',
+      notes: `Supervisor rejected report. Mandatory rationale: "${reason}"`,
+      timestamp: new Date().toISOString()
+    };
+
+    const updated = {
+      ...target,
+      status: 'REJECTED',
+      currentStage: 'REJECTED',
+      responsibleRole: 'NONE',
+      blockingReason: `Rejection rationale: ${reason}`,
+      slaStatus: 'COMPLETED',
+      nextAction: 'Ticket closed as rejected. Reporter may submit clarified request if applicable.',
+      rejectionReason: reason,
+      timeline: [...(target.timeline || []), newTimelineEvent]
+    };
+
+    setIssues(prev => prev.map(i => (i.id === target.id ? updated : i)));
+    if (selectedIssue?.id === target.id) setSelectedIssue(updated);
+
+    addNotifications([
+      {
+        type: 'STATUS_CHANGED',
+        title: `Problem Report Declined: ${target.referenceCode}`,
+        message: `Report "${target.title}" was reviewed and declined by Arjun Kumar. Reason: "${reason}"`,
+        referenceCode: target.referenceCode,
+        recipientRole: 'ROLE_REPORTER',
+        recipientEmail: 'priya.sharma@processhub.com'
+      }
+    ]);
+
+    showToast(
+      `Problem Report Declined (#${target.referenceCode})`,
+      `Report declined by Arjun Kumar. Rationale logged to timeline and dispatched to reporter.`,
+      `Delivered to: Reporter Priya Sharma`
+    );
+
+    try {
+      await api.rejectIssue(undefined, issueId, reason);
+    } catch {
+      // Offline fallback
+    }
+  };
+
+  // 5. Supervisor Request Information (RFI)
+  const handleRequestInfo = async (issueId, questions) => {
+    const target = issues.find(i => i.id === issueId || i.referenceCode === issueId);
+    if (!target) return;
+
+    const newTimelineEvent = {
+      id: `tl-${Date.now()}`,
+      actorName: currentUser?.fullName || 'Arjun Kumar',
+      action: 'INFO_REQUESTED',
+      notes: `Supervisor requested clarification: "${questions}"`,
+      timestamp: new Date().toISOString()
+    };
+
+    const updated = {
+      ...target,
+      status: 'MORE_INFO_REQUESTED',
+      currentStage: 'AWAITING_REPORTER_INPUT',
+      responsibleRole: 'ROLE_REPORTER',
+      slaStatus: 'AT_RISK',
+      blockingReason: 'Awaiting clarification response from reporter before work can be assigned',
+      nextAction: `Reporter (${target.reporterName}) must provide requested details: "${questions}"`,
+      timeline: [...(target.timeline || []), newTimelineEvent]
+    };
+
+    setIssues(prev => prev.map(i => (i.id === target.id ? updated : i)));
+    if (selectedIssue?.id === target.id) setSelectedIssue(updated);
+
+    addNotifications([
+      {
+        type: 'INFO_REQUESTED',
+        title: `Additional Information Requested: ${target.referenceCode}`,
+        message: `Arjun Kumar requested details on "${target.title}": "${questions}"`,
+        referenceCode: target.referenceCode,
+        recipientRole: 'ROLE_REPORTER',
+        recipientEmail: 'priya.sharma@processhub.com'
+      }
+    ]);
+
+    showToast(
+      `Information Requested (#${target.referenceCode})`,
+      `RFI dispatched to Reporter Priya Sharma: "${questions}"`,
+      `Delivered to: Reporter Priya Sharma`
+    );
+
+    try {
+      await api.requestInfo(undefined, issueId, questions);
+    } catch {
+      // Offline fallback
+    }
+  };
+
+  // 6. Reporter Responds to Information Request
+  const handleProvideInfo = async (issueId, responseText) => {
+    const target = issues.find(i => i.id === issueId || i.referenceCode === issueId);
+    if (!target) return;
+
+    const newTimelineEvent = {
+      id: `tl-${Date.now()}`,
+      actorName: currentUser?.fullName || 'Priya Sharma',
+      action: 'INFO_PROVIDED',
+      notes: `Reporter submitted clarification: "${responseText}"`,
+      timestamp: new Date().toISOString()
+    };
+
+    const updated = {
+      ...target,
+      status: 'UNDER_REVIEW',
+      currentStage: 'UNDER_SUPERVISOR_REVIEW',
+      responsibleRole: 'ROLE_SUPERVISOR',
+      blockingReason: null,
+      slaStatus: 'ON_TRACK',
+      nextAction: 'Supervisor (Arjun Kumar) must review reporter clarifications and resume triage',
+      timeline: [...(target.timeline || []), newTimelineEvent]
+    };
+
+    setIssues(prev => prev.map(i => (i.id === target.id ? updated : i)));
+    if (selectedIssue?.id === target.id) setSelectedIssue(updated);
+
+    addNotifications([
+      {
+        type: 'INFO_PROVIDED',
+        title: `Clarification Provided: ${target.referenceCode}`,
+        message: `Priya Sharma answered clarification request on "${target.title}": "${responseText}"`,
+        referenceCode: target.referenceCode,
+        recipientRole: 'ROLE_SUPERVISOR',
+        recipientEmail: 'arjun.kumar@processhub.com'
+      }
+    ]);
+
+    showToast(
+      `Clarification Submitted (#${target.referenceCode})`,
+      `Priya Sharma answered inquiry. Supervisor Arjun Kumar notified to resume triage.`,
+      `Delivered to: Supervisor Arjun Kumar`
+    );
+
+    try {
+      await api.provideInfo(undefined, issueId, responseText);
+    } catch {
+      // Offline fallback
+    }
+  };
+
+  // 7. Technician: Start Work
+  const handleStartWork = async (issueId) => {
+    const target = issues.find(i => i.id === issueId || i.referenceCode === issueId);
+    if (!target) return;
+
+    const newTimelineEvent = {
+      id: `tl-${Date.now()}`,
+      actorName: currentUser?.fullName || 'Karthik Raj',
+      action: 'WORK_STARTED',
+      notes: 'Technician arrived on-site, completed initial safety isolation, and initiated repair procedures',
+      timestamp: new Date().toISOString()
+    };
+
+    const updated = {
+      ...target,
+      status: 'IN_PROGRESS',
+      currentStage: 'REMEDIATION_IN_PROGRESS',
+      responsibleRole: 'ROLE_TECHNICIAN',
+      blockingReason: null,
+      slaStatus: 'ON_TRACK',
+      nextAction: `Technician (${target.assignedTechnicianName || 'Karthik Raj'}) is executing on-site diagnostic and repair tasks`,
+      timeline: [...(target.timeline || []), newTimelineEvent]
+    };
+
+    setIssues(prev => prev.map(i => (i.id === target.id ? updated : i)));
+    if (selectedIssue?.id === target.id) setSelectedIssue(updated);
+
+    addNotifications([
+      {
+        type: 'STATUS_CHANGED',
+        title: `Repair Work Started: ${target.referenceCode}`,
+        message: `Karthik Raj has commenced physical repair on "${target.title}".`,
+        referenceCode: target.referenceCode,
+        recipientRole: 'ROLE_SUPERVISOR',
+        recipientEmail: 'arjun.kumar@processhub.com'
+      },
+      {
+        type: 'STATUS_CHANGED',
+        title: `Technician On-Site: ${target.referenceCode}`,
+        message: `Work is now actively underway on your problem report "${target.title}".`,
+        referenceCode: target.referenceCode,
+        recipientRole: 'ROLE_REPORTER',
+        recipientEmail: 'priya.sharma@processhub.com'
+      }
+    ]);
+
+    showToast(
+      `Repair Work Started (#${target.referenceCode})`,
+      `Karthik Raj commenced repair. Supervisor and Reporter notified in real time.`,
+      `Delivered to: Supervisor Arjun Kumar & Reporter Priya Sharma`
+    );
+
+    try {
+      await api.startWork(undefined, issueId);
+    } catch {
+      // Offline fallback
+    }
+  };
+
+  // 8. Technician: Update Progress
+  const handleUpdateProgress = async (issueId, progressPct, notes) => {
+    const target = issues.find(i => i.id === issueId || i.referenceCode === issueId);
+    if (!target) return;
+
+    const newTimelineEvent = {
+      id: `tl-${Date.now()}`,
+      actorName: currentUser?.fullName || 'Karthik Raj',
+      action: 'PROGRESS_UPDATED',
+      notes: `Progress logged at ${progressPct}%. Operational notes: "${notes}"`,
+      timestamp: new Date().toISOString()
+    };
+
+    const updated = {
+      ...target,
+      progressPct,
+      slaStatus: 'ON_TRACK',
+      timeline: [...(target.timeline || []), newTimelineEvent]
+    };
+
+    setIssues(prev => prev.map(i => (i.id === target.id ? updated : i)));
+    if (selectedIssue?.id === target.id) setSelectedIssue(updated);
+
+    addNotifications([
+      {
+        type: 'STATUS_CHANGED',
+        title: `Progress Update: ${target.referenceCode} (${progressPct}%)`,
+        message: `Karthik Raj updated repair progress to ${progressPct}% on "${target.title}": "${notes}"`,
+        referenceCode: target.referenceCode,
+        recipientRole: 'ROLE_SUPERVISOR',
+        recipientEmail: 'arjun.kumar@processhub.com'
+      },
+      {
+        type: 'STATUS_CHANGED',
+        title: `Repair Update: ${target.referenceCode} (${progressPct}%)`,
+        message: `Technician logged ${progressPct}% completion on "${target.title}".`,
+        referenceCode: target.referenceCode,
+        recipientRole: 'ROLE_REPORTER',
+        recipientEmail: 'priya.sharma@processhub.com'
+      }
+    ]);
+
+    showToast(
+      `Progress Logged (${progressPct}%) (#${target.referenceCode})`,
+      `Logged progress update. Supervisor and Reporter notified in real time.`,
+      `Delivered to: Supervisor Arjun Kumar & Reporter Priya Sharma`
+    );
+
+    try {
+      await api.updateProgress(undefined, issueId, progressPct, notes);
+    } catch {
+      // Offline fallback
+    }
+  };
+
+  // 9. Technician: Request Expenditure (Conditional Finance Gate: $100 Threshold)
+  const handleRequestExpenditure = async (issueId, amount, justification) => {
+    const target = issues.find(i => i.id === issueId || i.referenceCode === issueId);
+    if (!target) return;
+
+    const numAmount = parseFloat(amount);
+    const requiresFinance = numAmount > 100.00;
+
+    const newExp = {
+      id: `exp-${Date.now()}`,
+      amount: numAmount,
+      justification,
+      status: requiresFinance ? 'PENDING' : 'APPROVED',
+      requestedByName: currentUser?.fullName || 'Karthik Raj',
       createdAt: new Date().toISOString()
     };
-    setNotifications([newNotif, ...notifications]);
 
-    setIsReportModalOpen(false);
-    setSelectedIssue(newIssue);
-  };
-
-  // 2. Supervisor Actions: Review, Assign, Reject, RFI
-  const handleStartReview = (issueId) => {
-    setIssues(issues.map(i => {
-      if (i.id !== issueId) return i;
-      return {
-        ...i,
-        status: 'UNDER_REVIEW',
-        currentStage: 'UNDER_REVIEW',
-        responsibleRole: 'ROLE_SUPERVISOR',
-        nextAction: 'Supervisor is reviewing report and preparing assignment or RFI',
-        timeline: [
-          ...i.timeline,
-          {
-            id: `tl-${Date.now()}`,
-            actorName: 'Marcus Aurelius',
-            action: 'REVIEW_STARTED',
-            notes: 'Supervisor initiated triage review',
-            timestamp: new Date().toISOString()
-          }
-        ]
+    let updated;
+    if (requiresFinance) {
+      const newTimelineEvent = {
+        id: `tl-${Date.now()}`,
+        actorName: currentUser?.fullName || 'Karthik Raj',
+        action: 'EXPENDITURE_REQUESTED',
+        notes: `Technician requested $${numAmount.toFixed(2)} for: "${justification}". Exceeds $100.00 threshold; gated for Finance Approver authorization.`,
+        timestamp: new Date().toISOString()
       };
-    }));
-  };
 
-  const handleAssignTechnician = (issueId, technicianId, instructions) => {
-    setIssues(issues.map(i => {
-      if (i.id !== issueId) return i;
-      return {
-        ...i,
-        status: 'ASSIGNED',
-        assignedTechnicianName: 'Bob Builder',
-        assignedTechnicianId: technicianId,
-        currentStage: 'ASSIGNED',
-        responsibleRole: 'ROLE_TECHNICIAN',
-        blockingReason: null,
-        nextAction: 'Assigned technician (Bob Builder) must accept work and start diagnosis',
-        timeline: [
-          ...i.timeline,
-          {
-            id: `tl-${Date.now()}`,
-            actorName: 'Marcus Aurelius',
-            action: 'TECHNICIAN_ASSIGNED',
-            notes: `Assigned to Bob Builder. Instructions: ${instructions}`,
-            timestamp: new Date().toISOString()
-          }
-        ]
+      updated = {
+        ...target,
+        status: 'AWAITING_FINANCE',
+        currentStage: 'AWAITING_FINANCE_APPROVAL',
+        responsibleRole: 'ROLE_FINANCE_APPROVER',
+        slaStatus: 'AT_RISK',
+        blockingReason: `Expenditure authorization requested by Technician ($${numAmount.toFixed(2)}) exceeds auto-approval threshold ($100.00)`,
+        nextAction: 'Finance Approver (Divya Nair) must review expenditure quote and approve or decline with notes',
+        expenditures: [...(target.expenditures || []), newExp],
+        timeline: [...(target.timeline || []), newTimelineEvent]
       };
-    }));
 
-    setNotifications([
-      {
-        id: `notif-${Date.now()}`,
-        type: 'ISSUE_ASSIGNED',
-        title: 'Work Order Assigned',
-        message: `You were assigned ticket #${issues.find(i => i.id === issueId)?.referenceCode}`,
-        referenceCode: issues.find(i => i.id === issueId)?.referenceCode,
-        read: false,
-        createdAt: new Date().toISOString()
-      },
-      ...notifications
-    ]);
-  };
-
-  const handleRejectIssue = (issueId, reason) => {
-    setIssues(issues.map(i => {
-      if (i.id !== issueId) return i;
-      return {
-        ...i,
-        status: 'REJECTED',
-        currentStage: 'REJECTED',
-        responsibleRole: 'ROLE_SUPERVISOR',
-        blockingReason: `Rejected: ${reason}`,
-        nextAction: 'Issue closed by supervisor decision',
-        closedAt: new Date().toISOString(),
-        timeline: [
-          ...i.timeline,
-          {
-            id: `tl-${Date.now()}`,
-            actorName: 'Marcus Aurelius',
-            action: 'ISSUE_REJECTED',
-            notes: `Rejected with reason: ${reason}`,
-            timestamp: new Date().toISOString()
-          }
-        ]
-      };
-    }));
-  };
-
-  const handleRequestInfo = (issueId, question) => {
-    setIssues(issues.map(i => {
-      if (i.id !== issueId) return i;
-      return {
-        ...i,
-        status: 'MORE_INFO_REQUESTED',
-        currentStage: 'MORE_INFO_REQUESTED',
-        responsibleRole: 'ROLE_REPORTER',
-        blockingReason: `Awaiting reporter answer: "${question}"`,
-        nextAction: 'Reporter (Alice Reporter) must respond with requested details to unblock triage',
-        timeline: [
-          ...i.timeline,
-          {
-            id: `tl-${Date.now()}`,
-            actorName: 'Marcus Aurelius',
-            action: 'MORE_INFO_REQUESTED',
-            notes: `RFI Question: ${question}`,
-            timestamp: new Date().toISOString()
-          }
-        ]
-      };
-    }));
-  };
-
-  const handleProvideInfo = (issueId, response) => {
-    setIssues(issues.map(i => {
-      if (i.id !== issueId) return i;
-      return {
-        ...i,
-        status: 'UNDER_REVIEW',
-        currentStage: 'UNDER_REVIEW',
-        responsibleRole: 'ROLE_SUPERVISOR',
-        blockingReason: null,
-        nextAction: 'Supervisor is reviewing reporter provided details',
-        timeline: [
-          ...i.timeline,
-          {
-            id: `tl-${Date.now()}`,
-            actorName: 'Alice Reporter',
-            action: 'MORE_INFO_PROVIDED',
-            notes: `Reporter Response: ${response}`,
-            timestamp: new Date().toISOString()
-          }
-        ]
-      };
-    }));
-  };
-
-  // 3. Technician Actions: Start, Progress, Spend, Resolve
-  const handleStartWork = (issueId) => {
-    setIssues(issues.map(i => {
-      if (i.id !== issueId) return i;
-      return {
-        ...i,
-        status: 'IN_PROGRESS',
-        currentStage: 'IN_PROGRESS',
-        responsibleRole: 'ROLE_TECHNICIAN',
-        blockingReason: null,
-        nextAction: 'Technician is actively diagnosing and implementing repair',
-        timeline: [
-          ...i.timeline,
-          {
-            id: `tl-${Date.now()}`,
-            actorName: 'Bob Builder',
-            action: 'STATUS_CHANGED',
-            notes: 'Work started by assigned technician',
-            timestamp: new Date().toISOString()
-          }
-        ]
-      };
-    }));
-  };
-
-  const handleUpdateProgress = (issueId, notes, progressPercentage) => {
-    setIssues(issues.map(i => {
-      if (i.id !== issueId) return i;
-      return {
-        ...i,
-        timeline: [
-          ...i.timeline,
-          {
-            id: `tl-${Date.now()}`,
-            actorName: 'Bob Builder',
-            action: 'PROGRESS_UPDATED',
-            notes: `[${progressPercentage}% Complete] ${notes}`,
-            timestamp: new Date().toISOString()
-          }
-        ]
-      };
-    }));
-  };
-
-  const handleRequestExpenditure = (issueId, amount, justification) => {
-    const isAutoApproved = amount <= 100.00;
-
-    const newExpenditure = {
-      id: `exp-${Date.now()}`,
-      amount,
-      justification,
-      status: isAutoApproved ? 'APPROVED' : 'PENDING',
-      requestedByName: 'Bob Builder',
-      createdAt: new Date().toISOString(),
-    };
-
-    setIssues(issues.map(i => {
-      if (i.id !== issueId) return i;
-
-      const updatedExp = [...(i.expenditures || []), newExpenditure];
-
-      if (isAutoApproved) {
-        return {
-          ...i,
-          expenditures: updatedExp,
-          timeline: [
-            ...i.timeline,
-            {
-              id: `tl-${Date.now()}`,
-              actorName: 'System Spend Engine',
-              action: 'EXPENDITURE_APPROVED',
-              notes: `Expenditure of $${amount.toFixed(2)} auto-approved (within $100 limit)`,
-              timestamp: new Date().toISOString()
-            }
-          ]
-        };
-      } else {
-        return {
-          ...i,
-          status: 'AWAITING_FINANCE',
-          currentStage: 'AWAITING_FINANCE',
-          responsibleRole: 'ROLE_FINANCE_APPROVER',
-          blockingReason: `Expenditure request of $${amount.toFixed(2)} exceeds auto-approval threshold ($100.00)`,
-          nextAction: `Finance Approver must approve or decline expenditure of $${amount.toFixed(2)}`,
-          expenditures: updatedExp,
-          timeline: [
-            ...i.timeline,
-            {
-              id: `tl-${Date.now()}`,
-              actorName: 'Bob Builder',
-              action: 'EXPENDITURE_REQUESTED',
-              notes: `Requested $${amount.toFixed(2)} for ${justification}`,
-              timestamp: new Date().toISOString()
-            }
-          ]
-        };
-      }
-    }));
-
-    if (!isAutoApproved) {
-      setNotifications([
+      addNotifications([
         {
-          id: `notif-${Date.now()}`,
           type: 'EXPENDITURE_REQUESTED',
-          title: 'Finance Authorization Required',
-          message: `Technician requested $${amount.toFixed(2)} for ${justification}`,
-          referenceCode: issues.find(i => i.id === issueId)?.referenceCode,
-          read: false,
-          createdAt: new Date().toISOString()
-        },
-        ...notifications
+          title: `Spend Authorization Required: ${target.referenceCode}`,
+          message: `Karthik Raj requested $${numAmount.toFixed(2)} for "${target.title}". Justification: "${justification}". Financial sign-off required.`,
+          referenceCode: target.referenceCode,
+          recipientRole: 'ROLE_FINANCE_APPROVER',
+          recipientEmail: 'divya.nair@processhub.com'
+        }
       ]);
+
+      showToast(
+        `Spend Authorization Requested ($${numAmount.toFixed(2)})`,
+        `Exceeds $100 limit. Routed to Finance Approver Divya Nair for approval.`,
+        `Delivered to: Finance Approver Divya Nair`
+      );
+    } else {
+      const newTimelineEvent = {
+        id: `tl-${Date.now()}`,
+        actorName: 'Finance Rules Engine',
+        action: 'EXPENDITURE_AUTO_APPROVED',
+        notes: `Spend request of $${numAmount.toFixed(2)} auto-approved (within $100.00 delegated threshold).`,
+        timestamp: new Date().toISOString()
+      };
+
+      updated = {
+        ...target,
+        expenditures: [...(target.expenditures || []), newExp],
+        timeline: [...(target.timeline || []), newTimelineEvent]
+      };
+
+      showToast(
+        `Spend Auto-Approved ($${numAmount.toFixed(2)})`,
+        `Spend request is &le; $100.00 threshold. Work proceeds without delay.`,
+        `Auto-approved under delegated authority`
+      );
+    }
+
+    setIssues(prev => prev.map(i => (i.id === target.id ? updated : i)));
+    if (selectedIssue?.id === target.id) setSelectedIssue(updated);
+
+    try {
+      await api.requestExpenditure(undefined, issueId, amount, justification);
+    } catch {
+      // Offline fallback
     }
   };
 
-  const handleSubmitResolution = (issueId, resolutionData) => {
-    setIssues(issues.map(i => {
-      if (i.id !== issueId) return i;
+  // 10. Finance Approver: Decide Expenditure (Approve or Reject)
+  const handleDecideExpenditure = async (issueId, expenditureId, approved, notes) => {
+    const target = issues.find(i => i.id === issueId || i.referenceCode === issueId);
+    if (!target) return;
+
+    let expAmount = 380;
+    const updatedExps = (target.expenditures || []).map(e => {
+      if (e.id !== expenditureId && String(e.id) !== String(expenditureId)) return e;
+      expAmount = e.amount;
       return {
-        ...i,
-        status: 'RESOLVED_PENDING_VERIFICATION',
-        currentStage: 'RESOLVED_PENDING_VERIFICATION',
-        responsibleRole: 'ROLE_SUPERVISOR',
-        blockingReason: 'Pending independent verification and sign-off (Technician self-verification prohibited)',
-        nextAction: 'Authorized supervisor or reporter must independently inspect work outcome',
-        workSummary: resolutionData.workSummary,
-        rootCause: resolutionData.rootCause,
-        laborHours: resolutionData.laborHours,
-        partsUsed: resolutionData.partsUsed,
-        resolutionEvidenceUrl: resolutionData.resolutionEvidenceUrl,
-        timeline: [
-          ...i.timeline,
-          {
-            id: `tl-${Date.now()}`,
-            actorName: 'Bob Builder',
-            action: 'SUBMITTED_FOR_VERIFICATION',
-            notes: `Resolution submitted: ${resolutionData.workSummary}`,
-            timestamp: new Date().toISOString()
-          }
-        ]
+        ...e,
+        status: approved ? 'APPROVED' : 'REJECTED',
+        approved,
+        decisionNotes: notes,
+        decidedAt: new Date().toISOString(),
+        decidedBy: currentUser?.fullName || 'Divya Nair'
       };
-    }));
+    });
 
-    setNotifications([
+    const newTimelineEvent = {
+      id: `tl-${Date.now()}`,
+      actorName: currentUser?.fullName || 'Divya Nair',
+      action: approved ? 'EXPENDITURE_APPROVED' : 'EXPENDITURE_REJECTED',
+      notes: `Finance Approver ${approved ? 'APPROVED' : 'REJECTED'} expenditure of $${expAmount}. Notes: "${notes}"`,
+      timestamp: new Date().toISOString()
+    };
+
+    const newStatus = approved ? 'IN_PROGRESS' : 'UNDER_REVIEW';
+    const newStage = approved ? 'REMEDIATION_IN_PROGRESS' : 'EXPENDITURE_REJECTED_TRIAGE';
+    const newRole = approved ? 'ROLE_TECHNICIAN' : 'ROLE_SUPERVISOR';
+    const newBlocker = approved ? null : `Expenditure rejected by Finance: ${notes}`;
+    const newNextAction = approved 
+      ? 'Technician (Karthik Raj) authorized to procure parts and execute repair'
+      : 'Supervisor (Arjun Kumar) must review alternative remediation plan or cancel work order';
+
+    const updated = {
+      ...target,
+      status: newStatus,
+      currentStage: newStage,
+      responsibleRole: newRole,
+      blockingReason: newBlocker,
+      nextAction: newNextAction,
+      slaStatus: approved ? 'ON_TRACK' : 'AT_RISK',
+      expenditures: updatedExps,
+      timeline: [...(target.timeline || []), newTimelineEvent]
+    };
+
+    setIssues(prev => prev.map(i => (i.id === target.id ? updated : i)));
+    if (selectedIssue?.id === target.id) setSelectedIssue(updated);
+
+    addNotifications([
       {
-        id: `notif-${Date.now()}`,
-        type: 'RESOLUTION_SUBMITTED',
-        title: 'Ready for Independent Sign-off',
-        message: `Work completed by Bob Builder. Awaiting independent inspection.`,
-        referenceCode: issues.find(i => i.id === issueId)?.referenceCode,
-        read: false,
-        createdAt: new Date().toISOString()
+        type: approved ? 'EXPENDITURE_APPROVED' : 'EXPENDITURE_REJECTED',
+        title: `Expenditure ${approved ? 'Approved' : 'Rejected'}: ${target.referenceCode}`,
+        message: `Your spend request of $${expAmount} was ${approved ? 'APPROVED' : 'DECLINED'} by Divya Nair. Notes: "${notes}"`,
+        referenceCode: target.referenceCode,
+        recipientRole: 'ROLE_TECHNICIAN',
+        recipientEmail: 'karthik.raj@processhub.com'
       },
-      ...notifications
+      {
+        type: approved ? 'EXPENDITURE_APPROVED' : 'EXPENDITURE_REJECTED',
+        title: `Finance Decision Logged: ${target.referenceCode}`,
+        message: `Divya Nair ${approved ? 'APPROVED' : 'DECLINED'} expenditure for "${target.title}". Work state updated.`,
+        referenceCode: target.referenceCode,
+        recipientRole: 'ROLE_SUPERVISOR',
+        recipientEmail: 'arjun.kumar@processhub.com'
+      }
     ]);
+
+    showToast(
+      `Finance Decision: ${approved ? 'Approved' : 'Declined'} ($${expAmount})`,
+      `Divya Nair logged finance decision. Technician Karthik Raj notified in real time.`,
+      `Delivered to: Technician Karthik Raj & Supervisor Arjun Kumar`
+    );
+
+    try {
+      await api.decideExpenditure(undefined, issueId, expenditureId, approved, notes);
+    } catch {
+      // Offline fallback
+    }
   };
 
-  // 4. Finance Decisions
-  const handleDecideExpenditure = (issueId, expenditureId, approved, notes) => {
-    setIssues(issues.map(i => {
-      if (i.id !== issueId) return i;
+  // 11. Technician: Complete Work & Submit Resolution
+  const handleSubmitResolution = async (issueId, resData) => {
+    const target = issues.find(i => i.id === issueId || i.referenceCode === issueId);
+    if (!target) return;
 
-      const updatedExp = (i.expenditures || []).map(e => {
-        if (e.id === expenditureId) {
-          return { ...e, status: approved ? 'APPROVED' : 'REJECTED' };
+    const newTimelineEvent = {
+      id: `tl-${Date.now()}`,
+      actorName: currentUser?.fullName || 'Karthik Raj',
+      action: 'RESOLUTION_SUBMITTED',
+      notes: `Technician completed physical repair. Summary: "${resData.workSummary}". Root cause: "${resData.rootCause}". Labor: ${resData.laborHours || 2}h. Awaiting independent verification sign-off.`,
+      timestamp: new Date().toISOString()
+    };
+
+    const updated = {
+      ...target,
+      status: 'RESOLVED_PENDING_VERIFICATION',
+      currentStage: 'RESOLVED_PENDING_VERIFICATION',
+      responsibleRole: 'ROLE_SUPERVISOR',
+      blockingReason: 'Pending independent verification sign-off (Technician cannot verify own work)',
+      slaStatus: 'ON_TRACK',
+      nextAction: 'Authorized supervisor or reporter must independently verify work outcome',
+      workSummary: resData.workSummary,
+      rootCause: resData.rootCause,
+      laborHours: parseFloat(resData.laborHours || 0),
+      partsUsed: resData.partsUsed,
+      resolutionEvidenceUrl: resData.evidenceUrl || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&q=80&w=800',
+      resolvedAt: new Date().toISOString(),
+      timeline: [...(target.timeline || []), newTimelineEvent]
+    };
+
+    setIssues(prev => prev.map(i => (i.id === target.id ? updated : i)));
+    if (selectedIssue?.id === target.id) setSelectedIssue(updated);
+
+    addNotifications([
+      {
+        type: 'RESOLUTION_SUBMITTED',
+        title: `Ready for Verification: ${target.referenceCode}`,
+        message: `Karthik Raj completed repair on "${target.title}". Independent verification sign-off required.`,
+        referenceCode: target.referenceCode,
+        recipientRole: 'ROLE_SUPERVISOR',
+        recipientEmail: 'arjun.kumar@processhub.com'
+      },
+      {
+        type: 'RESOLUTION_SUBMITTED',
+        title: `Repair Completed: ${target.referenceCode}`,
+        message: `Work on "${target.title}" has been completed and is awaiting supervisory verification.`,
+        referenceCode: target.referenceCode,
+        recipientRole: 'ROLE_REPORTER',
+        recipientEmail: 'priya.sharma@processhub.com'
+      }
+    ]);
+
+    showToast(
+      `Repair Completed (#${target.referenceCode})`,
+      `Resolution submitted by Karthik Raj. Supervisor Arjun Kumar notified for verification.`,
+      `Delivered to: Supervisor Arjun Kumar & Reporter Priya Sharma`
+    );
+
+    try {
+      await api.submitResolution(undefined, issueId, resData);
+    } catch {
+      // Offline fallback
+    }
+  };
+
+  // 12. Verification: Independent Sign-Off or Reopen Rework
+  const handleVerifyResolution = async (issueId, approved, verificationNotes) => {
+    const target = issues.find(i => i.id === issueId || i.referenceCode === issueId);
+    if (!target) return;
+
+    const verifierName = currentUser?.fullName || 'Arjun Kumar';
+
+    let updated;
+    if (approved) {
+      const event1 = {
+        id: `tl-${Date.now()}-1`,
+        actorName: verifierName,
+        action: 'RESOLUTION_VERIFIED',
+        notes: `Independent verification sign-off APPROVED by ${verifierName}. Notes: "${verificationNotes}"`,
+        timestamp: new Date().toISOString()
+      };
+      const event2 = {
+        id: `tl-${Date.now()}-2`,
+        actorName: 'Audit System',
+        action: 'ISSUE_CLOSED',
+        notes: 'Ticket closed in accordance with enterprise verification governance',
+        timestamp: new Date().toISOString()
+      };
+
+      updated = {
+        ...target,
+        status: 'CLOSED',
+        currentStage: 'VERIFIED_AND_CLOSED',
+        responsibleRole: 'NONE',
+        blockingReason: null,
+        slaStatus: 'COMPLETED',
+        nextAction: 'Issue closed successfully with complete audit trail',
+        verifiedBy: verifierName,
+        verifiedAt: new Date().toISOString(),
+        verificationNotes,
+        timeline: [...(target.timeline || []), event1, event2]
+      };
+
+      addNotifications([
+        {
+          type: 'ISSUE_CLOSED',
+          title: `Issue Verified & Closed: ${target.referenceCode}`,
+          message: `Repair on "${target.title}" has been verified and permanently closed. Full audit timeline archived.`,
+          referenceCode: target.referenceCode,
+          recipientRole: 'ROLE_REPORTER',
+          recipientEmail: 'priya.sharma@processhub.com'
+        },
+        {
+          type: 'RESOLUTION_VERIFIED',
+          title: `Work Verified: ${target.referenceCode}`,
+          message: `Your resolution on "${target.title}" was verified and signed off by ${verifierName}.`,
+          referenceCode: target.referenceCode,
+          recipientRole: 'ROLE_TECHNICIAN',
+          recipientEmail: 'karthik.raj@processhub.com'
         }
-        return e;
-      });
+      ]);
 
-      if (approved) {
-        return {
-          ...i,
-          status: 'IN_PROGRESS',
-          currentStage: 'IN_PROGRESS',
-          responsibleRole: 'ROLE_TECHNICIAN',
-          blockingReason: null,
-          nextAction: 'Technician may resume work with authorized parts and budget',
-          expenditures: updatedExp,
-          timeline: [
-            ...i.timeline,
-            {
-              id: `tl-${Date.now()}`,
-              actorName: 'Fiona Finance',
-              action: 'EXPENDITURE_APPROVED',
-              notes: `Finance approved expenditure. Notes: ${notes}`,
-              timestamp: new Date().toISOString()
-            }
-          ]
-        };
-      } else {
-        return {
-          ...i,
-          status: 'UNDER_REVIEW',
-          currentStage: 'UNDER_SUPERVISOR_REVIEW',
-          responsibleRole: 'ROLE_SUPERVISOR',
-          blockingReason: `Expenditure declined by Finance: ${notes}`,
-          nextAction: 'Supervisor must review alternative repair or re-scope work',
-          expenditures: updatedExp,
-          timeline: [
-            ...i.timeline,
-            {
-              id: `tl-${Date.now()}`,
-              actorName: 'Fiona Finance',
-              action: 'EXPENDITURE_REJECTED',
-              notes: `Finance declined expenditure: ${notes}`,
-              timestamp: new Date().toISOString()
-            }
-          ]
-        };
-      }
-    }));
+      showToast(
+        `Issue Verified & Closed (#${target.referenceCode})`,
+        `Independent sign-off approved by ${verifierName}. Issue permanently closed.`,
+        `Delivered to: Reporter Priya Sharma & Technician Karthik Raj`
+      );
+    } else {
+      const event1 = {
+        id: `tl-${Date.now()}`,
+        actorName: verifierName,
+        action: 'VERIFICATION_FAILED',
+        notes: `Verification REJECTED by ${verifierName}. Rework required. Notes: "${verificationNotes}"`,
+        timestamp: new Date().toISOString()
+      };
+
+      updated = {
+        ...target,
+        status: 'IN_PROGRESS',
+        currentStage: 'REMEDIATION_IN_PROGRESS',
+        responsibleRole: 'ROLE_TECHNICIAN',
+        blockingReason: `Verification failed rework order: "${verificationNotes}"`,
+        slaStatus: 'AT_RISK',
+        nextAction: `Technician (${target.assignedTechnicianName || 'Karthik Raj'}) must address rework deficiency noted in verification`,
+        timeline: [...(target.timeline || []), event1]
+      };
+
+      addNotifications([
+        {
+          type: 'VERIFICATION_FAILED',
+          title: `Rework Required: ${target.referenceCode}`,
+          message: `Verification sign-off was declined by ${verifierName}. Rework notes: "${verificationNotes}"`,
+          referenceCode: target.referenceCode,
+          recipientRole: 'ROLE_TECHNICIAN',
+          recipientEmail: 'karthik.raj@processhub.com'
+        },
+        {
+          type: 'STATUS_CHANGED',
+          title: `Rework Ordered: ${target.referenceCode}`,
+          message: `Supervisor requested additional remediation on "${target.title}".`,
+          referenceCode: target.referenceCode,
+          recipientRole: 'ROLE_REPORTER',
+          recipientEmail: 'priya.sharma@processhub.com'
+        }
+      ]);
+
+      showToast(
+        `Verification Declined — Rework Ordered (#${target.referenceCode})`,
+        `Rework order dispatched to Technician Karthik Raj: "${verificationNotes}"`,
+        `Delivered to: Technician Karthik Raj & Reporter Priya Sharma`
+      );
+    }
+
+    setIssues(prev => prev.map(i => (i.id === target.id ? updated : i)));
+    if (selectedIssue?.id === target.id) setSelectedIssue(updated);
+
+    try {
+      await api.verifyResolution(undefined, issueId, approved, verificationNotes);
+    } catch {
+      // Offline fallback
+    }
   };
 
-  // 5. Verification Sign-Off (Separation of Duties)
-  const handleVerifyResolution = (issueId, approved, verificationNotes) => {
-    setIssues(issues.map(i => {
-      if (i.id !== issueId) return i;
-
-      if (approved) {
-        return {
-          ...i,
-          status: 'CLOSED',
-          currentStage: 'CLOSED',
-          responsibleRole: 'NONE',
-          blockingReason: null,
-          nextAction: 'Ticket resolved and independently signed off',
-          closedAt: new Date().toISOString(),
-          timeline: [
-            ...i.timeline,
-            {
-              id: `tl-${Date.now()}`,
-              actorName: currentRole === 'ROLE_SUPERVISOR' ? 'Marcus Aurelius' : 'Alice Reporter',
-              action: 'VERIFICATION_PASSED',
-              notes: `Independent sign-off granted: ${verificationNotes}`,
-              timestamp: new Date().toISOString()
-            }
-          ]
-        };
-      } else {
-        return {
-          ...i,
-          status: 'IN_PROGRESS',
-          currentStage: 'IN_PROGRESS',
-          responsibleRole: 'ROLE_TECHNICIAN',
-          blockingReason: `Verification Failed: ${verificationNotes}`,
-          nextAction: 'Technician must address inspection deficiency and perform rework',
-          timeline: [
-            ...i.timeline,
-            {
-              id: `tl-${Date.now()}`,
-              actorName: currentRole === 'ROLE_SUPERVISOR' ? 'Marcus Aurelius' : 'Alice Reporter',
-              action: 'VERIFICATION_FAILED',
-              notes: `Verification rejected: ${verificationNotes}`,
-              timestamp: new Date().toISOString()
-            }
-          ]
-        };
-      }
-    }));
+  // 13. Notifications Read/Unread Actions
+  const handleMarkNotificationRead = (id) => {
+    setNotifications(prev => prev.map(n => (n.id === id ? { ...n, read: true } : n)));
   };
 
-  // 6. SLA Escalation Engine
+  const handleMarkAllRead = (idsToMark) => {
+    if (Array.isArray(idsToMark)) {
+      const idSet = new Set(idsToMark);
+      setNotifications(prev => prev.map(n => (idSet.has(n.id) ? { ...n, read: true } : n)));
+    } else {
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    }
+  };
+
+  // Click on notification to jump directly to issue detail modal
+  const handleSelectNotification = (notif) => {
+    const match = issues.find(i => i.referenceCode === notif.referenceCode || i.id === notif.issueId);
+    if (match) {
+      setSelectedIssue(match);
+    }
+  };
+
+  // 14. SLA Escalation Trigger (Analytics / Admin)
   const handleTriggerSlaEscalation = async () => {
-    let count = 0;
-    setIssues(issues.map(i => {
-      // If critical or older than 2 hours, flag breached in demonstration
-      if (i.priority === 'CRITICAL' || i.referenceCode === 'PH-1002') {
-        count++;
+    let escalatedCount = 0;
+    setIssues(prev => prev.map(i => {
+      if (i.referenceCode === 'PH-1002' || i.status === 'AWAITING_FINANCE') {
+        escalatedCount++;
         return {
           ...i,
           slaBreached: true,
@@ -551,7 +992,7 @@ export default function App() {
               id: `tl-${Date.now()}`,
               actorName: 'SLA Escalation Service',
               action: 'SLA_BREACHED',
-              notes: 'SLA deadline exceeded. High-priority escalation dispatched to department supervisor.',
+              notes: 'SLA deadline exceeded. High-priority escalation dispatched to department supervisor and admin.',
               timestamp: new Date().toISOString()
             }
           ]
@@ -560,47 +1001,121 @@ export default function App() {
       return i;
     }));
 
-    setNotifications([
+    addNotifications([
       {
-        id: `notif-${Date.now()}`,
         type: 'SLA_BREACH_WARNING',
-        title: 'SLA Breach Escalation Alert',
+        title: 'SLA Breach Escalation Alert: PH-1002',
         message: 'Critical pump maintenance #PH-1002 exceeded 4-hour threshold window.',
         referenceCode: 'PH-1002',
-        read: false,
-        createdAt: new Date().toISOString()
+        recipientRole: 'ROLE_ADMIN',
+        recipientEmail: 'rahul.verma@processhub.com'
       },
-      ...notifications
+      {
+        type: 'SLA_BREACH_WARNING',
+        title: 'SLA Escalation: PH-1002',
+        message: 'Critical pump maintenance #PH-1002 exceeded response window. Expedite review.',
+        referenceCode: 'PH-1002',
+        recipientRole: 'ROLE_SUPERVISOR',
+        recipientEmail: 'arjun.kumar@processhub.com'
+      }
     ]);
 
-    return { escalatedCount: count || 1 };
-  };
+    showToast(
+      'SLA Escalation Triggered',
+      `Evaluated all active issues. Critical item #PH-1002 escalated for overdue SLA window.`,
+      `Delivered to: Administrator Rahul Verma & Supervisor Arjun Kumar`
+    );
 
-  // Notification actions
-  const handleMarkNotificationRead = (id) => {
-    setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n));
-  };
-
-  const handleMarkAllRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, read: true })));
+    return { status: 'SCANNED', escalatedCount: 1 };
   };
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Header */}
+      {/* Real-Time Toast Notification Popup */}
+      {toast && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '24px',
+          zIndex: 9999,
+          background: 'var(--bg-primary)',
+          border: '1px solid var(--border-medium)',
+          borderLeft: '4px solid var(--indigo-500)',
+          borderRadius: 'var(--radius-lg)',
+          boxShadow: 'var(--shadow-xl)',
+          padding: '14px 18px',
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '12px',
+          maxWidth: '440px',
+          backdropFilter: 'blur(12px)',
+          animation: 'slideInRight 0.25s ease-out'
+        }}>
+          <div style={{
+            width: '32px',
+            height: '32px',
+            borderRadius: 'var(--radius-full)',
+            background: 'rgba(99, 102, 241, 0.15)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--indigo-400)',
+            flexShrink: 0,
+            marginTop: '2px'
+          }}>
+            <Bell size={16} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 700, fontSize: '0.86rem', color: 'var(--text-primary)' }}>
+                {toast.title}
+              </span>
+              <button 
+                onClick={() => setToast(null)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0 2px' }}
+              >
+                <X size={15} />
+              </button>
+            </div>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '4px 0 6px', lineHeight: 1.4 }}>
+              {toast.message}
+            </p>
+            {toast.recipientInfo && (
+              <div style={{ 
+                fontSize: '0.72rem', 
+                color: 'var(--indigo-400)', 
+                fontWeight: 600, 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '4px',
+                background: 'rgba(99, 102, 241, 0.08)',
+                padding: '3px 8px',
+                borderRadius: '4px',
+                width: 'fit-content'
+              }}>
+                <ShieldCheck size={12} />
+                <span>{toast.recipientInfo}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Header with User Perspective Switcher & Recipient Notifications */}
       <Navbar 
         currentRole={currentRole}
-        setCurrentRole={setCurrentRole}
-        currentUser={DEMO_USERS[currentRole.toLowerCase().replace('role_', '')] || DEMO_USERS.reporter}
+        currentUser={currentUser}
+        onSelectRole={handleSelectRole}
         notifications={notifications}
         onMarkNotificationRead={handleMarkNotificationRead}
         onMarkAllRead={handleMarkAllRead}
+        onSelectNotification={handleSelectNotification}
         onOpenReportModal={() => setIsReportModalOpen(true)}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
       />
 
-      {/* Main Content View Container */}
+      {/* Main Content Workspace */}
       <main className="app-container" style={{ flex: 1 }}>
         {activeTab === 'reporter' && (
           <ReporterView 
@@ -646,7 +1161,7 @@ export default function App() {
           <VerificationView 
             issues={issues}
             currentRole={currentRole}
-            currentUser={DEMO_USERS[currentRole.toLowerCase().replace('role_', '')] || DEMO_USERS.reporter}
+            currentUser={currentUser}
             onVerifyResolution={handleVerifyResolution}
             onSelectIssue={setSelectedIssue}
           />
@@ -655,6 +1170,7 @@ export default function App() {
         {activeTab === 'analytics' && (
           <AnalyticsView 
             issues={issues}
+            currentUser={currentUser}
             onTriggerSlaEscalation={handleTriggerSlaEscalation}
           />
         )}

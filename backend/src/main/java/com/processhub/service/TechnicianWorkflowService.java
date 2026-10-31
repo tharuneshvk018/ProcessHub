@@ -3,6 +3,7 @@ package com.processhub.service;
 import com.processhub.domain.entity.*;
 import com.processhub.domain.enums.ExpenditureStatus;
 import com.processhub.domain.enums.IssueStatus;
+import com.processhub.domain.enums.NotificationType;
 import com.processhub.domain.enums.Priority;
 import com.processhub.domain.enums.Role;
 import com.processhub.domain.enums.TimelineAction;
@@ -28,6 +29,7 @@ public class TechnicianWorkflowService {
     private final ExpenditureRequestRepository expenditureRequestRepository;
     private final OrganizationService organizationService;
     private final IssueService issueService;
+    private final NotificationService notificationService;
 
     public TechnicianWorkflowService(
             IssueRepository issueRepository,
@@ -36,7 +38,8 @@ public class TechnicianWorkflowService {
             UserRepository userRepository,
             ExpenditureRequestRepository expenditureRequestRepository,
             OrganizationService organizationService,
-            IssueService issueService) {
+            IssueService issueService,
+            NotificationService notificationService) {
         this.issueRepository = issueRepository;
         this.timelineRepository = timelineRepository;
         this.membershipRepository = membershipRepository;
@@ -44,6 +47,7 @@ public class TechnicianWorkflowService {
         this.expenditureRequestRepository = expenditureRequestRepository;
         this.organizationService = organizationService;
         this.issueService = issueService;
+        this.notificationService = notificationService;
     }
 
     @Transactional(readOnly = true)
@@ -155,6 +159,30 @@ public class TechnicianWorkflowService {
         );
         timelineRepository.save(event);
 
+        // Notify reporter
+        notificationService.createNotification(
+                orgId,
+                saved.getReporter(),
+                saved,
+                NotificationType.STATUS_CHANGED,
+                "Work Started: " + saved.getReferenceCode(),
+                "Technician " + currentUser.getFullName() + " has begun repair work on: " + saved.getTitle()
+        );
+
+        // Notify department supervisors
+        List<OrganizationMembership> supervisors = membershipRepository
+                .findByOrganizationIdAndDepartmentIdAndRoleAndActiveTrue(orgId, saved.getDepartment().getId(), Role.ROLE_SUPERVISOR);
+        for (OrganizationMembership sup : supervisors) {
+            notificationService.createNotification(
+                    orgId,
+                    sup.getUser(),
+                    saved,
+                    NotificationType.STATUS_CHANGED,
+                    "Work Started: " + saved.getReferenceCode(),
+                    "Technician " + currentUser.getFullName() + " has begun repair work on: " + saved.getTitle()
+            );
+        }
+
         return issueService.mapToResponse(saved);
     }
 
@@ -255,6 +283,30 @@ public class TechnicianWorkflowService {
                 note
         );
         timelineRepository.save(event);
+
+        // Notify department supervisor(s)
+        List<OrganizationMembership> supervisors = membershipRepository
+                .findByOrganizationIdAndDepartmentIdAndRoleAndActiveTrue(orgId, saved.getDepartment().getId(), Role.ROLE_SUPERVISOR);
+        for (OrganizationMembership sup : supervisors) {
+            notificationService.createNotification(
+                    orgId,
+                    sup.getUser(),
+                    saved,
+                    NotificationType.RESOLUTION_SUBMITTED,
+                    "Resolution Pending Verification: " + saved.getReferenceCode(),
+                    "Technician " + currentUser.getFullName() + " completed work on " + saved.getReferenceCode() + ". Ready for independent verification."
+            );
+        }
+
+        // Notify reporter
+        notificationService.createNotification(
+                orgId,
+                saved.getReporter(),
+                saved,
+                NotificationType.RESOLUTION_SUBMITTED,
+                "Repair Completed: " + saved.getReferenceCode(),
+                "Repair work on your problem report '" + saved.getTitle() + "' is completed and is awaiting quality verification."
+        );
 
         return issueService.mapToResponse(saved);
     }
