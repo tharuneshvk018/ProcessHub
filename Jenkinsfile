@@ -5,98 +5,86 @@ pipeline {
     options {
         timestamps()
         disableConcurrentBuilds()
+        skipDefaultCheckout(false)
+    }
+
+    environment {
+        DOCKER = 'C:\\Users\\tharu\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe'
+        MAVEN_IMAGE = 'maven:3.9.9-eclipse-temurin-21-alpine'
+        NODE_IMAGE = 'node:22-alpine'
     }
 
     stages {
 
-        // STAGE 1: GITHUB CHECKOUT
         stage('1. Git Checkout') {
             steps {
-                echo 'Checking out ProcessHub source code from GitHub'
-
-                checkout scm
-
-                bat 'git status --short --branch'
-
-                echo 'GitHub source checkout completed successfully'
+                echo 'Verifying ProcessHub source from GitHub'
+                bat 'git log -1 --oneline'
             }
         }
 
-        // STAGE 2: BACKEND DEPENDENCY VALIDATION
-        stage('2. Backend Validation') {
+        stage('2. Backend Validation and Testing') {
             steps {
-                echo 'Backend dependency validation will run here'
+                echo 'Validating backend dependencies and running JUnit tests'
+                bat '''
+                "%DOCKER%" run --rm -v "%WORKSPACE%:/workspace" -w /workspace/backend %MAVEN_IMAGE% mvn -B clean verify
+                '''
+            }
+            post {
+                always {
+                    junit testResults: 'backend/target/surefire-reports/*.xml',
+                          allowEmptyResults: true
+                }
             }
         }
 
-        // STAGE 3: BACKEND COMPILATION
-        stage('3. Backend Compilation') {
+        stage('3. Frontend Build') {
             steps {
-                echo 'Backend compilation will run here'
+                echo 'Installing dependencies, linting and building frontend'
+                bat '''
+                "%DOCKER%" run --rm -v "%WORKSPACE%:/workspace" -w /workspace/frontend %NODE_IMAGE% sh -c "npm ci && npm run lint && npm run build"
+                '''
             }
         }
 
-        // STAGE 4: JUNIT TESTING
-        stage('4. JUnit Testing') {
+        stage('4. Docker Image Build') {
             steps {
-                echo 'JUnit tests and JaCoCo coverage will run here'
+                echo 'Building ProcessHub backend and frontend images'
+                bat '''
+                "%DOCKER%" build -t processhub-backend:ci -f backend/Dockerfile backend
+                "%DOCKER%" build -t processhub-frontend:ci -f frontend/Dockerfile frontend
+                '''
             }
         }
 
-        // STAGE 5: FRONTEND DEPENDENCIES
-        stage('5. Frontend Dependencies') {
+        stage('5. Docker Compose Validation') {
             steps {
-                echo 'Frontend npm dependencies will be installed here'
+                echo 'Validating Docker Compose configuration without deploying'
+                bat '''
+                "%DOCKER%" compose config --quiet
+                '''
             }
         }
 
-        // STAGE 6: FRONTEND BUILD
-        stage('6. Frontend Build') {
+        stage('6. Pipeline Report') {
             steps {
-                echo 'Frontend linting and production build will run here'
-            }
-        }
-
-        // STAGE 7: SONARQUBE ANALYSIS
-        stage('7. SonarQube Analysis') {
-            steps {
-                echo 'SonarQube code quality analysis will run here'
-            }
-        }
-
-        // STAGE 8: DOCKER IMAGE BUILD
-        stage('8. Docker Build') {
-            steps {
-                echo 'Backend and frontend Docker images will be built here'
-            }
-        }
-
-        // STAGE 9: DOCKER COMPOSE VALIDATION
-        stage('9. Docker Compose Validation') {
-            steps {
-                echo 'Docker Compose configuration will be validated here'
-            }
-        }
-
-        // STAGE 10: FINAL PIPELINE REPORT
-        stage('10. Pipeline Report') {
-            steps {
-                echo 'ProcessHub CI/CD pipeline execution completed'
+                echo 'Collecting test and coverage reports'
+                archiveArtifacts artifacts: 'backend/target/site/jacoco/**,frontend/dist/**',
+                                 allowEmptyArchive: true
+                echo 'ProcessHub CI validation completed'
             }
         }
     }
 
     post {
         success {
-            echo 'SUCCESS: ProcessHub pipeline completed successfully'
+            echo 'SUCCESS: ProcessHub CI pipeline completed.'
         }
-
         failure {
-            echo 'FAILURE: ProcessHub pipeline execution failed'
+            echo 'FAILED: Check the stage logs above to identify the issue.'
         }
-
         always {
-            echo 'ProcessHub pipeline execution finished'
+            echo 'ProcessHub Jenkins execution finished.'
         }
     }
 }
