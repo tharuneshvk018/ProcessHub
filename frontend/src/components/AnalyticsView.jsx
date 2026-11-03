@@ -1,20 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
-  BarChart3, 
   Activity, 
   Clock, 
-  AlertOctagon, 
-  DollarSign, 
   Layers, 
   RotateCw, 
   CheckCircle2, 
-  Cpu, 
   ShieldAlert,
   Zap,
   Users,
-  History,
-  ShieldCheck,
-  Check
+  History
 } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -32,13 +26,7 @@ export default function AnalyticsView({
 
   const isAdmin = currentUser?.role === 'ROLE_ADMIN';
 
-  useEffect(() => {
-    if (isAdmin) {
-      loadAdminData();
-    }
-  }, [isAdmin]);
-
-  const loadAdminData = async () => {
+  const loadAdminData = useCallback(async () => {
     setLoadingAdminData(true);
     try {
       const [users, activities, report] = await Promise.allSettled([
@@ -55,7 +43,19 @@ export default function AnalyticsView({
     } finally {
       setLoadingAdminData(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (isAdmin) {
+      Promise.resolve().then(() => {
+        if (isMounted) loadAdminData();
+      });
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [isAdmin, loadAdminData]);
 
   const displayUsers = (adminUsers && adminUsers.length > 0) 
     ? adminUsers 
@@ -93,7 +93,7 @@ export default function AnalyticsView({
       const result = await onTriggerSlaEscalation();
       setEscalateMessage(`SLA scan completed. ${result?.escalatedCount || 1} overdue issue(s) evaluated and escalated.`);
       if (isAdmin) loadAdminData();
-    } catch (err) {
+    } catch {
       setEscalateMessage('SLA scan completed across all active issues.');
     } finally {
       setEscalating(false);

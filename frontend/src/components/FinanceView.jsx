@@ -4,10 +4,7 @@ import {
   CheckCircle2, 
   XCircle, 
   Clock, 
-  AlertCircle, 
-  TrendingUp, 
-  ShieldCheck,
-  FileCheck
+  TrendingUp
 } from 'lucide-react';
 
 export default function FinanceView({ 

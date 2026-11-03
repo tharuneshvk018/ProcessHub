@@ -52,7 +52,7 @@ class ApiService {
         let errorData = {};
         try {
           errorData = await response.json();
-        } catch (e) {
+        } catch {
           errorData = { message: `Request failed with status ${response.status}` };
         }
         throw new Error(errorData.message || `Error ${response.status}`);

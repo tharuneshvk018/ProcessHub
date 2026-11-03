@@ -3,24 +3,17 @@ import {
   Users, 
   AlertCircle, 
   HelpCircle, 
-  CheckCircle, 
   XCircle, 
-  UserPlus, 
-  RotateCw, 
-  ArrowRight,
-  ShieldCheck,
-  Send
+  UserPlus
 } from 'lucide-react';
 
 export default function SupervisorView({ 
   issues, 
   departments, 
   onSelectIssue, 
-  onStartReview, 
   onAssignTechnician, 
   onRejectIssue, 
-  onRequestInfo,
-  onEvaluateRouting 
+  onRequestInfo 
 }) {
   const [selectedDept, setSelectedDept] = useState('ALL');
   const [selectedIssueForAction, setSelectedIssueForAction] = useState(null);

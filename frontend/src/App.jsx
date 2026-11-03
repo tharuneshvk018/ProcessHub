@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Bell, CheckCircle2, AlertTriangle, X, ArrowRight, ShieldCheck, Clock } from 'lucide-react';
+import { Bell, X, ShieldCheck } from 'lucide-react';
 import Navbar from './components/Navbar';
 import ReporterView from './components/ReporterView';
 import SupervisorView from './components/SupervisorView';
@@ -62,13 +62,10 @@ export default function App() {
     }
   }, [toast]);
 
-  // Keep selected issue in sync when issue list updates
-  useEffect(() => {
-    if (selectedIssue) {
-      const refreshed = issues.find(i => i.id === selectedIssue.id || i.referenceCode === selectedIssue.referenceCode);
-      if (refreshed) setSelectedIssue(refreshed);
-    }
-  }, [issues]);
+  // Derive latest active selected issue from issues state to keep modal synchronized
+  const activeSelectedIssue = selectedIssue 
+    ? (issues.find(i => i.id === selectedIssue.id || i.referenceCode === selectedIssue.referenceCode) || selectedIssue)
+    : null;
 
   // Optional background data sync with backend if online
   const refreshBackendData = useCallback(async () => {
@@ -977,10 +974,10 @@ export default function App() {
 
   // 14. SLA Escalation Trigger (Analytics / Admin)
   const handleTriggerSlaEscalation = async () => {
-    let escalatedCount = 0;
+    const escalatedIssues = issues.filter(i => i.referenceCode === 'PH-1002' || i.status === 'AWAITING_FINANCE');
+    const escalatedCount = escalatedIssues.length || 1;
     setIssues(prev => prev.map(i => {
       if (i.referenceCode === 'PH-1002' || i.status === 'AWAITING_FINANCE') {
-        escalatedCount++;
         return {
           ...i,
           slaBreached: true,
@@ -1026,7 +1023,7 @@ export default function App() {
       `Delivered to: Administrator Rahul Verma & Supervisor Arjun Kumar`
     );
 
-    return { status: 'SCANNED', escalatedCount: 1 };
+    return { status: 'SCANNED', escalatedCount };
   };
 
   return (
@@ -1187,10 +1184,9 @@ export default function App() {
 
       {/* Deep Inspection Drawer / Modal */}
       <IssueDetailModal 
-        issue={selectedIssue}
+        issue={activeSelectedIssue}
         onClose={() => setSelectedIssue(null)}
         onProvideInfo={handleProvideInfo}
-        currentRole={currentRole}
       />
     </div>
   );

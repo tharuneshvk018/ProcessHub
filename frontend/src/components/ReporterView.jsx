@@ -9,8 +9,7 @@ import {
   Plus, 
   MapPin, 
   Cpu, 
-  ArrowRight,
-  ShieldAlert
+  ArrowRight
 } from 'lucide-react';
 
 export default function ReporterView({ 

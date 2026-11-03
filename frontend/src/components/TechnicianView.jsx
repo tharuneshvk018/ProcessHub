@@ -9,7 +9,6 @@ import {
   MapPin, 
   Cpu, 
   AlertTriangle,
-  Upload,
   ArrowRight
 } from 'lucide-react';
 

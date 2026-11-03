@@ -1,25 +1,17 @@
 import React, { useState } from 'react';
 import { 
   X, 
-  MapPin, 
-  Cpu, 
-  Calendar, 
   Clock, 
-  User, 
   ShieldAlert, 
   AlertTriangle, 
   DollarSign, 
-  FileText, 
-  History,
-  CheckCircle2,
-  ExternalLink
+  History
 } from 'lucide-react';
 
 export default function IssueDetailModal({ 
   issue, 
   onClose,
-  onProvideInfo,
-  currentRole
+  onProvideInfo
 }) {
   const [rfiAnswer, setRfiAnswer] = useState('');
   const [activeTab, setActiveTab] = useState('TIMELINE'); // 'TIMELINE', 'EXPENDITURES', 'EVIDENCE'

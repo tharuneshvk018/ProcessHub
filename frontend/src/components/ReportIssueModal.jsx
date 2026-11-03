@@ -2,26 +2,19 @@ import React, { useState } from 'react';
 import { 
   X, 
   AlertCircle, 
-  Building2, 
-  MapPin, 
-  Cpu, 
-  Send, 
-  Upload, 
-  ShieldCheck 
+  Send 
 } from 'lucide-react';
 
 export default function ReportIssueModal({ 
   isOpen, 
   onClose, 
-  departments, 
-  categories, 
+  departments = [], 
+  categories = [], 
   onSubmit 
 }) {
-  if (!isOpen) return null;
-
   const [departmentId, setDepartmentId] = useState(departments[0]?.id || '');
   const [categoryId, setCategoryId] = useState(categories[0]?.id || '');
-  const [subtype, setSubtype] = useState('');
+  const [subtype] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [locationBuilding, setLocationBuilding] = useState('Science Complex A');
@@ -73,6 +66,8 @@ export default function ReportIssueModal({
     });
     setSubmitting(false);
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="modal-backdrop" onClick={onClose}>

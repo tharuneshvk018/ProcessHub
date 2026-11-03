@@ -3,11 +3,6 @@ import {
   ShieldCheck, 
   CheckCircle2, 
   RotateCcw, 
-  AlertTriangle, 
-  Clock, 
-  FileCheck, 
-  Image, 
-  User, 
   Lock,
   ArrowRight
 } from 'lucide-react';
@@ -15,7 +10,6 @@ import {
 export default function VerificationView({ 
   issues, 
   currentRole, 
-  currentUser, 
   onVerifyResolution, 
   onSelectIssue 
 }) {

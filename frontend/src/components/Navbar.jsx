@@ -5,10 +5,7 @@ import {
   PlusCircle, 
   UserCheck, 
   ChevronDown,
-  Check, 
-  ExternalLink,
-  Layers,
-  User as UserIcon
+  Check
 } from 'lucide-react';
 
 const ROLES = [
@@ -285,7 +282,7 @@ export default function Navbar({
                 <button
                   key={r.key}
                   onClick={() => {
-                    onSelectRole && onSelectRole(r.key);
+                    onSelectRole?.(r.key);
                     setShowRoleMenu(false);
                   }}
                   style={{
