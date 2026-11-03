@@ -9,6 +9,7 @@ pipeline {
 
     environment {
         DOCKER = 'C:\\Users\\tharu\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe'
+        DOCKER_CONFIG = 'C:\\DockerCLI'
 
         MAVEN_IMAGE = 'maven:3.9.9-eclipse-temurin-21-alpine'
         NODE_IMAGE = 'node:22-alpine'
@@ -44,7 +45,7 @@ pipeline {
                 echo 'Validating backend Maven project'
 
                 bat '''
-                    "%DOCKER%" run --rm ^
+                    "%DOCKER%" --config "%DOCKER_CONFIG%" run --rm ^
                     -v "%WORKSPACE%/backend:/workspace" ^
                     -w /workspace ^
                     %MAVEN_IMAGE% ^
@@ -54,12 +55,12 @@ pipeline {
         }
 
         // STAGE 3: BACKEND COMPILATION
-        stage('3. Backend Compilation') {
+        stage('3. BACKEND COMPILATION') {
             steps {
                 echo 'Compiling ProcessHub backend'
 
                 bat '''
-                    "%DOCKER%" run --rm ^
+                    "%DOCKER%" --config "%DOCKER_CONFIG%" run --rm ^
                     -v "%WORKSPACE%/backend:/workspace" ^
                     -w /workspace ^
                     %MAVEN_IMAGE% ^
@@ -74,7 +75,7 @@ pipeline {
                 echo 'Running backend tests and generating coverage report'
 
                 bat '''
-                    "%DOCKER%" run --rm ^
+                    "%DOCKER%" --config "%DOCKER_CONFIG%" run --rm ^
                     -v "%WORKSPACE%/backend:/workspace" ^
                     -w /workspace ^
                     %MAVEN_IMAGE% ^
@@ -97,13 +98,13 @@ pipeline {
             }
         }
 
-        // STAGE 5: FRONTEND DEPENDENCY INSTALLATION
+        // STAGE 5: FRONTEND DEPENDENCIES
         stage('5. Frontend Dependencies') {
             steps {
                 echo 'Installing and validating frontend dependencies'
 
                 bat '''
-                    "%DOCKER%" run --rm ^
+                    "%DOCKER%" --config "%DOCKER_CONFIG%" run --rm ^
                     -v "%WORKSPACE%:/workspace" ^
                     -w /workspace ^
                     %NODE_IMAGE% ^
@@ -118,7 +119,7 @@ pipeline {
                 echo 'Running frontend lint and production build'
 
                 bat '''
-                    "%DOCKER%" run --rm ^
+                    "%DOCKER%" --config "%DOCKER_CONFIG%" run --rm ^
                     -v "%WORKSPACE%:/workspace" ^
                     -w /workspace ^
                     %NODE_IMAGE% ^
@@ -148,7 +149,7 @@ pipeline {
                     )
                 ]) {
                     bat '''
-                        "%DOCKER%" run --rm ^
+                        "%DOCKER%" --config "%DOCKER_CONFIG%" run --rm ^
                         -e SONAR_TOKEN ^
                         -v "%WORKSPACE%/backend:/workspace" ^
                         -w /workspace ^
@@ -165,20 +166,20 @@ pipeline {
                 echo 'Building ProcessHub Docker images'
 
                 bat '''
-                    "%DOCKER%" build ^
+                    "%DOCKER%" --config "%DOCKER_CONFIG%" build ^
                     -t %BACKEND_IMAGE% ^
                     "%WORKSPACE%/backend"
 
                     if errorlevel 1 exit /b 1
 
-                    "%DOCKER%" build ^
+                    "%DOCKER%" --config "%DOCKER_CONFIG%" build ^
                     -t %FRONTEND_IMAGE% ^
                     "%WORKSPACE%/frontend"
 
                     if errorlevel 1 exit /b 1
 
                     echo Docker images:
-                    "%DOCKER%" images
+                    "%DOCKER%" --config "%DOCKER_CONFIG%" images
                 '''
             }
         }
@@ -189,13 +190,17 @@ pipeline {
                 echo 'Validating Docker Compose configuration'
 
                 bat '''
-                    "%DOCKER%" compose ^
+                    "%DOCKER%" --config "%DOCKER_CONFIG%" compose ^
                     -f "%WORKSPACE%/docker-compose.yml" ^
                     config --quiet
 
                     if errorlevel 1 exit /b 1
 
                     echo Docker Compose configuration is valid.
+
+                    echo Checking Compose application:
+                    "%DOCKER%" --config "%DOCKER_CONFIG%" compose ^
+                    -f "%WORKSPACE%/docker-compose.yml" ps
                 '''
             }
         }
